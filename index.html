@@ -1,0 +1,190 @@
+﻿<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>內部共用平台 (V3)</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans TC", sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; background-color: #f8f9fa; margin: 0; }
+        .container { background: white; padding: 2.5rem; border-radius: 8px; box-shadow: 0 8px 30px rgba(0,0,0,0.1); text-align: center; width: 380px; box-sizing: border-box; }
+        h2, h3 { color: #343a40; margin-top: 0; margin-bottom: 1.5rem; }
+        p { color: #6c757d; font-size: 0.9em; }
+        input { width: 100%; padding: 12px; margin-bottom: 12px; border: 1px solid #ced4da; border-radius: 4px; box-sizing: border-box; font-size: 1em; }
+        input:focus { border-color: #80bdff; outline: 0; box-shadow: 0 0 0 0.2rem rgba(0,123,255,.25); }
+        button { width: 100%; padding: 12px; margin-bottom: 10px; border: none; border-radius: 4px; color: white; font-weight: bold; cursor: pointer; font-size: 1em; transition: opacity 0.2s; }
+        button:hover { opacity: 0.85; }
+        #signup-btn { background-color: #28a745; }
+        #signin-btn { background-color: #007bff; }
+        #google-btn { background-color: #db4437; }
+        /* 【新樣式】為更新密碼按鈕設定一個新的顏色 */
+        #update-password-btn { background-color: #17a2b8; } 
+        #signout-btn { background-color: #6c757d; margin-top: 1rem; }
+        hr { border: 0; border-top: 1px solid #dee2e6; margin: 20px 0; }
+        #message { margin-top: 15px; color: #dc3545; font-weight: bold; min-height: 1.2em;}
+        #user-info { text-align: left; }
+        #user-info p { margin: 8px 0; font-size: 1em; }
+        #user-info strong { color: #212529; }
+    </style>
+</head>
+<body>
+
+
+<div class="container">
+    <div id="auth-view">
+        <h2>內部平台登入</h2>
+        <input type="email" id="email" placeholder="電子郵件" required />
+        <input type="password" id="password" placeholder="密碼" required />
+        <button id="signin-btn">用密碼登入</button>
+        <button id="signup-btn">註冊新帳號</button>
+        <hr>
+        <button id="google-btn">用 Google 帳號登入</button>
+    </div>
+    
+    <div id="user-info" style="display:none;">
+        <h3>登入成功！</h3>
+        <p>歡迎您, <strong id="user-email"></strong></p>
+        <hr>
+        <p style="text-align:center; font-weight: bold; margin-bottom: 1rem;">變更密碼</p>
+        <input type="password" id="new-password" placeholder="輸入新密碼" />
+        <button id="update-password-btn">更新密碼</button>
+        <button id="signout-btn">登出</button>
+    </div>
+
+
+    <div id="message"></div>
+</div>
+
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    // --- 1. 初始化設定 ---
+    const SUPABASE_URL = 'https://wvdfuqvebqolvpwhdelg.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind2ZGZ1cXZlYnFvbHZwd2hkZWxnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTIyMzA0MjksImV4cCI6MjA2NzgwNjQyOX0.0VAgxyaoyeFeNbto9pUchwqQVqvHzCzyC22wXb01OKU';
+
+
+    const { createClient } = supabase;
+    const _supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+
+    // --- 2. 取得頁面元素 ---
+    const emailInput = document.getElementById('email');
+    const passwordInput = document.getElementById('password');
+    const authView = document.getElementById('auth-view');
+    const userInfoView = document.getElementById('user-info');
+    const userEmailSpan = document.getElementById('user-email');
+    const messageDiv = document.getElementById('message');
+    // 【JS 修改】取得新加入的元素
+    const newPasswordInput = document.getElementById('new-password');
+
+
+    // --- 3. 認證功能函式 ---
+    const signUp = async () => { /* ... 此處程式碼未變 ... */ };
+    const signInWithPassword = async () => { /* ... 此處程式碼未變 ... */ };
+    const signInWithGoogle = async () => { /* ... 此處程式碼未變 ... */ };
+    const signOut = async () => { /* ... 此處程式碼未變 ... */ };
+
+
+    /* 【JS 修改】新增更新密碼的函式 */
+    const updatePassword = async () => {
+        const newPassword = newPasswordInput.value;
+        
+        // 簡單驗證：確保密碼不為空且長度足夠
+        if (!newPassword || newPassword.length < 6) {
+            messageDiv.innerText = '密碼長度至少需要 6 個字元。';
+            return;
+        }
+
+
+        messageDiv.innerText = "更新中...";
+        const { data, error } = await _supabase.auth.updateUser({
+            password: newPassword
+        });
+
+
+        if (error) {
+            messageDiv.innerText = '密碼更新失敗: ' + error.message;
+        } else {
+            messageDiv.innerText = '密碼已成功更新！';
+            newPasswordInput.value = ''; // 成功後清空輸入框
+        }
+    };
+    
+    // --- (其餘函式複製) ---
+    const F_signUp = async () => {
+        messageDiv.innerText = "處理中...";
+        const { error } = await _supabase.auth.signUp({
+            email: emailInput.value,
+            password: passwordInput.value,
+        });
+        if (error) {
+            messageDiv.innerText = '註冊失敗: ' + error.message;
+        } else {
+            messageDiv.innerText = "";
+            alert('註冊成功！請檢查您的信箱以完成驗證。');
+        }
+    };
+    const F_signInWithPassword = async () => {
+        messageDiv.innerText = "登入中...";
+        const { error } = await _supabase.auth.signInWithPassword({
+            email: emailInput.value,
+            password: passwordInput.value,
+        });
+        if (error) {
+            messageDiv.innerText = '登入失敗: ' + error.message;
+        }
+    };
+    const F_signInWithGoogle = async () => {
+        messageDiv.innerText = "";
+        const { error } = await _supabase.auth.signInWithOAuth({
+            provider: 'google',
+        });
+        if (error) {
+            messageDiv.innerText = 'Google 登入失敗: ' + error.message;
+        }
+    };
+    const F_signOut = async () => {
+        await _supabase.auth.signOut();
+    };
+    
+    // --- 4. 畫面更新邏輯 ---
+    const updateAuthView = (user) => {
+        messageDiv.innerText = ""; 
+        if (user) {
+            authView.style.display = 'none';
+            userInfoView.style.display = 'block';
+            userEmailSpan.innerText = user.email;
+        } else {
+            authView.style.display = 'block';
+            userInfoView.style.display = 'none';
+            userEmailSpan.innerText = '';
+        }
+    };
+    
+    // --- 5. 事件綁定 ---
+    document.getElementById('signin-btn').addEventListener('click', F_signInWithPassword);
+    document.getElementById('signup-btn').addEventListener('click', F_signUp);
+    document.getElementById('google-btn').addEventListener('click', F_signInWithGoogle);
+    document.getElementById('signout-btn').addEventListener('click', F_signOut);
+    // 【JS 修改】為新按鈕綁定點擊事件
+    document.getElementById('update-password-btn').addEventListener('click', updatePassword);
+
+
+    // --- 6. 核心：監聽認證狀態變化 (包含初始狀態檢查) ---
+    _supabase.auth.onAuthStateChange((event, session) => {
+        const user = session?.user ?? null;
+        updateAuthView(user);
+    });
+    
+    const checkInitialSession = async () => {
+        const { data: { session } } = await _supabase.auth.getSession();
+        const user = session?.user ?? null;
+        updateAuthView(user);
+    };
+
+
+    checkInitialSession();
+});
+</script>
+</body>
+</html>
