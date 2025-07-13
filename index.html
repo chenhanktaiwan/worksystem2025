@@ -78,7 +78,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!email) return; // 使用者取消
 
         // 【重要】請務必將 YOUR_SITE_URL 換成您 Netlify 網站的永久網址！
-        const resetUrl = `https://YOUR_SITE_URL/reset.html`;
+        const resetUrl = `https://ephemeral-paletas-17b00b.netlify.app//reset.html`;
 
         messageDiv.innerText = "正在發送密碼重設郵件...";
         const { error } = await _supabase.auth.resetPasswordForEmail(email, {
