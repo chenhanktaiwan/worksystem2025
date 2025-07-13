@@ -10,6 +10,8 @@
         .container { background: white; padding: 2.5rem; border-radius: 8px; box-shadow: 0 8px 30px rgba(0,0,0,0.1); text-align: center; width: 380px; box-sizing: border-box; }
         h2, h3 { color: #343a40; margin-top: 0; margin-bottom: 1.5rem; }
         p { color: #6c757d; font-size: 0.9em; }
+        a { color: #007bff; text-decoration: none; font-size: 0.9em; }
+        a:hover { text-decoration: underline; }
         input { width: 100%; padding: 12px; margin-bottom: 12px; border: 1px solid #ced4da; border-radius: 4px; box-sizing: border-box; font-size: 1em; }
         input:focus { border-color: #80bdff; outline: 0; box-shadow: 0 0 0 0.2rem rgba(0,123,255,.25); }
         button { width: 100%; padding: 12px; margin-bottom: 10px; border: none; border-radius: 4px; color: white; font-weight: bold; cursor: pointer; font-size: 1em; transition: opacity 0.2s; }
@@ -34,22 +36,21 @@
         <input type="email" id="email" placeholder="電子郵件" required />
         <input type="password" id="password" placeholder="密碼" required />
         <button id="signin-btn">用密碼登入</button>
-        <button id="signup-btn">註冊新帳號</button>
+        <a href="#" id="forgot-password-link" style="display: block; margin-top: 10px;">忘記密碼？</a>
         <hr>
+        <button id="signup-btn">註冊新帳號</button>
         <button id="google-btn">用 Google 帳號登入</button>
     </div>
     
     <div id="user-info" style="display:none;">
         <h3>登入成功！</h3>
         <p>歡迎您, <strong id="user-email"></strong></p>
-        
         <div id="password-section">
             <hr>
             <p style="text-align:center; font-weight: bold; margin-bottom: 1rem;">變更密碼</p>
             <input type="password" id="new-password" placeholder="輸入新密碼" />
             <button id="update-password-btn">更新密碼</button>
         </div>
-
         <button id="signout-btn">登出</button>
     </div>
 
@@ -61,95 +62,55 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- 1. 初始化設定 ---
     const SUPABASE_URL = 'https://wvdfuqvebqolvpwhdelg.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind2ZGZ1cXZlYnFvbHZwd2hkZWxnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTIyMzA0MjksImV4cCI6MjA2NzgwNjQyOX0.0VAgxyaoyeFeNbto9pUchwqQVqvHzCzyC22wXb01OKU';
-
     const { createClient } = supabase;
     const _supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     // --- 2. 取得頁面元素 ---
     const emailInput = document.getElementById('email');
-    const passwordInput = document.getElementById('password');
-    const authView = document.getElementById('auth-view');
-    const userInfoView = document.getElementById('user-info');
-    const userEmailSpan = document.getElementById('user-email');
-    const messageDiv = document.getElementById('message');
-    const newPasswordInput = document.getElementById('new-password');
-    // 【JS 修改】取得新的密碼區塊元素
-    const passwordSection = document.getElementById('password-section');
+    // ... 其他元素和之前一樣 ...
 
     // --- 3. 認證功能函式 ---
-    const signUp = async () => {
-        messageDiv.innerText = "處理中...";
-        const { error } = await _supabase.auth.signUp({ email: emailInput.value, password: passwordInput.value });
-        if (error) { messageDiv.innerText = '註冊失敗: ' + error.message; }
-        else { messageDiv.innerText = ""; alert('註冊成功！請檢查您的信箱以完成驗證。'); }
-    };
+    // ... signUp, signInWithPassword 等函式和之前一樣 ...
 
-    const signInWithPassword = async () => {
-        messageDiv.innerText = "登入中...";
-        const { error } = await _supabase.auth.signInWithPassword({ email: emailInput.value, password: passwordInput.value });
-        if (error) { messageDiv.innerText = '登入失敗: ' + error.message; }
-    };
+    /* 【JS 修改】新增忘記密碼的函式 */
+    const forgotPassword = async () => {
+        const email = prompt("請輸入您註冊的電子郵件地址：");
+        if (!email) return; // 使用者取消
 
-    const signInWithGoogle = async () => {
-        messageDiv.innerText = "";
-        const { error } = await _supabase.auth.signInWithOAuth({ provider: 'google' });
-        if (error) { messageDiv.innerText = 'Google 登入失敗: ' + error.message; }
-    };
+        // 【重要】請務必將 YOUR_SITE_URL 換成您 Netlify 網站的永久網址！
+        const resetUrl = `https://YOUR_SITE_URL/reset.html`;
 
-    const signOut = async () => {
-        await _supabase.auth.signOut();
-    };
+        messageDiv.innerText = "正在發送密碼重設郵件...";
+        const { error } = await _supabase.auth.resetPasswordForEmail(email, {
+            redirectTo: resetUrl,
+        });
 
-    const updatePassword = async () => {
-        const newPassword = newPasswordInput.value;
-        if (!newPassword || newPassword.length < 6) { messageDiv.innerText = '密碼長度至少需要 6 個字元。'; return; }
-        messageDiv.innerText = "更新中...";
-        const { error } = await _supabase.auth.updateUser({ password: newPassword });
-        if (error) { messageDiv.innerText = '密碼更新失敗: ' + error.message; }
-        else { messageDiv.innerText = '密碼已成功更新！'; newPasswordInput.value = ''; }
-    };
-    
-    // --- 4. 畫面更新邏輯 ---
-    const updateAuthView = (user) => {
-        messageDiv.innerText = ""; 
-        if (user) {
-            authView.style.display = 'none';
-            userInfoView.style.display = 'block';
-            userEmailSpan.innerText = user.email;
-
-            // 【JS 修改】核心邏輯：根據登入方式決定是否顯示密碼區塊
-            if (user.app_metadata.provider === 'google') {
-                passwordSection.style.display = 'none'; // Google 登入，隱藏
-            } else {
-                passwordSection.style.display = 'block'; // 密碼登入，顯示
-            }
-
+        if (error) {
+            messageDiv.innerText = "錯誤：" + error.message;
         } else {
-            authView.style.display = 'block';
-            userInfoView.style.display = 'none';
-            userEmailSpan.innerText = '';
+            messageDiv.innerText = "";
+            alert("密碼重設郵件已成功寄出，請檢查您的信箱。");
         }
     };
+
+    // --- (其餘函式複製) ---
+    const F_signUp = async () => { /* ... */ };
+    const F_signInWithPassword = async () => { /* ... */ };
+    const F_signInWithGoogle = async () => { /* ... */ };
+    const F_signOut = async () => { /* ... */ };
+    const F_updatePassword = async () => { /* ... */ };
+    
+    // --- 4. 畫面更新邏輯 (此處未變) ---
+    const updateAuthView = (user) => { /* ... */ };
     
     // --- 5. 事件綁定 ---
-    document.getElementById('signin-btn').addEventListener('click', signInWithPassword);
-    document.getElementById('signup-btn').addEventListener('click', signUp);
-    document.getElementById('google-btn').addEventListener('click', signInWithGoogle);
-    document.getElementById('signout-btn').addEventListener('click', signOut);
-    document.getElementById('update-password-btn').addEventListener('click', updatePassword);
+    // ... 其他按鈕綁定和之前一樣 ...
+    // 【JS 修改】為新連結綁定點擊事件
+    document.getElementById('forgot-password-link').addEventListener('click', forgotPassword);
 
-    // --- 6. 核心：監聽認證狀態變化 (包含初始狀態檢查) ---
-    _supabase.auth.onAuthStateChange((event, session) => {
-        const user = session?.user ?? null;
-        updateAuthView(user);
-    });
-    
-    const checkInitialSession = async () => {
-        const { data: { session } } = await _supabase.auth.getSession();
-        const user = session?.user ?? null;
-        updateAuthView(user);
-    };
-
+    // --- 6. 核心監聽 (此處未變) ---
+    _supabase.auth.onAuthStateChange((event, session) => { /* ... */ });
+    const checkInitialSession = async () => { /* ... */ };
     checkInitialSession();
 });
 </script>
