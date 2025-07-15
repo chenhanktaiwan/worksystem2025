@@ -60,16 +60,8 @@
         .title-divider { border: 0; border-top: 1px solid #e0e0e0; margin-bottom: 2rem; }
 
         /* 儀表板網格佈局 */
-        .dashboard-grid {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 2rem;
-            align-items: flex-start;
-        }
-        .dashboard-item {
-            flex: 1;
-            min-width: 300px;
-        }
+        .dashboard-grid { display: flex; flex-wrap: wrap; gap: 2rem; align-items: flex-start; }
+        .dashboard-item { flex: 1; min-width: 300px; }
 
         /* 天氣小工具樣式 */
         .weather-widget { background: #2D9CDB; color: white; border-radius: 8px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); font-family: "Microsoft JhengHei", "微軟正黑體", sans-serif; }
@@ -85,6 +77,7 @@
         .forecast-day .date { font-size: 0.9rem; font-weight: bold; }
         .forecast-day .icon { font-size: 2rem; margin: 8px 0; }
         .forecast-day .temp { font-size: 1.1rem; font-weight: bold; }
+        .forecast-day .pop { font-size: 0.8em; opacity: 0.8; }
 
         /* Google 搜尋小工具樣式 */
         .search-widget { background: #ffffff; border-radius: 8px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
@@ -268,6 +261,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 weatherElements[elem.elementName] = elem.time;
             });
 
+            // --- 建立今日天氣 HTML ---
             const todayWx = weatherElements.Wx[0].parameter.parameterName;
             const todayPop = weatherElements.PoP[0].parameter.parameterName;
             const todayMaxT = weatherElements.MaxT[0].parameter.parameterName;
@@ -290,50 +284,54 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
             `;
 
+            // --- 建立未來預報 HTML (修正版) ---
             let forecastHtml = '<div class="weather-forecast">';
-            const dailyForecasts = {};
+            const dailyData = {};
 
-            // 1. 整理資料，以日期為 key
-            weatherElements.Wx.forEach((item, index) => {
-                // 確保 startTime 存在
-                if (!item.startTime) return;
-                const date = new Date(item.startTime).toLocaleDateString('en-CA'); // '2025-07-15'
-                if (!dailyForecasts[date]) {
-                    dailyForecasts[date] = {};
+            // 1. 重新組織資料，以日期為 key
+            for (let i = 0; i < weatherElements.Wx.length; i++) {
+                const startTime = weatherElements.Wx[i].startTime;
+                if (!startTime) continue;
+                const date = new Date(startTime).toLocaleDateString('en-CA');
+                
+                if (!dailyData[date]) {
+                    dailyData[date] = {};
                 }
-                // 我們優先採用白天的天氣狀況 (通常是第一個時段)
-                if (!dailyForecasts[date].wx) {
-                    dailyForecasts[date].wx = item.parameter;
+                
+                // 優先取白天的資料 (通常是第一個時段)
+                if (!dailyData[date].wx) {
+                    dailyData[date].wx = weatherElements.Wx[i].parameter;
                 }
-            });
-            weatherElements.MaxT.forEach(item => {
-                if (!item.startTime) return;
-                const date = new Date(item.startTime).toLocaleDateString('en-CA');
-                if (dailyForecasts[date] && !dailyForecasts[date].maxT) {
-                    dailyForecasts[date].maxT = item.parameter.parameterName;
+                if (!dailyData[date].pop) {
+                     dailyData[date].pop = weatherElements.PoP[i].parameter.parameterName;
                 }
-            });
-
-            // 2. 產生 HTML，只顯示未來 6 天
+                if (!dailyData[date].maxT) {
+                    dailyData[date].maxT = weatherElements.MaxT[i].parameter.parameterName;
+                }
+                 if (!dailyData[date].minT) {
+                    dailyData[date].minT = weatherElements.MinT[i].parameter.parameterName;
+                }
+            }
+            
+            // 2. 產生 HTML，顯示未來七天
+            const dates = Object.keys(dailyData).sort();
             let count = 0;
-            const todayStr = new Date().toLocaleDateString('en-CA');
-            for (const dateKey in dailyForecasts) {
-                if (dateKey === todayStr) continue; // 跳過今天
-                if (count >= 6) break;
-
-                const forecast = dailyForecasts[dateKey];
-                if (!forecast.wx || !forecast.maxT) continue; // 確保資料完整
+            for (const dateKey of dates) {
+                if (count >= 7) break; // 最多顯示7天
+                const forecast = dailyData[dateKey];
+                
+                if (!forecast.wx || !forecast.maxT || !forecast.minT || !forecast.pop) continue;
 
                 const date = new Date(dateKey);
                 const day = `${date.getMonth() + 1}/${date.getDate()}`;
                 const icon = getCwaWeatherIcon(forecast.wx.parameterValue);
-                const temp = forecast.maxT;
-
+                
                 forecastHtml += `
                     <div class="forecast-day">
                         <div class="date">${day}</div>
                         <div class="icon">${icon}</div>
-                        <div class="temp">${temp}°</div>
+                        <div class="temp">${forecast.minT}°/${forecast.maxT}°</div>
+                        <div class="pop">💧 ${forecast.pop}%</div>
                     </div>
                 `;
                 count++;
