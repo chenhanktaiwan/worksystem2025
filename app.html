@@ -12,7 +12,20 @@
         .app-container { display: flex; height: 100vh; }
 
         /* 新增：載入中覆蓋層 */
-        #loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: #f4f7f9; display: flex; justify-content: center; align-items: center; font-size: 1.2rem; color: #2c3e50; z-index: 9999; }
+        #loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #f4f7f9;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.2rem;
+            color: #2c3e50;
+            z-index: 9999;
+        }
 
         /* 側邊導覽列 */
         .sidebar { width: var(--sidebar-width); background-color: #2c3e50; color: white; display: flex; flex-direction: column; padding: 1.5rem 0; transition: all 0.3s ease-in-out; }
