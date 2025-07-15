@@ -100,7 +100,7 @@
         #map-container { margin-top: 2rem; position: relative; }
         #map { height: 400px; width: 100%; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
         
-        /* 修正：新版地圖搜尋框的容器樣式 */
+        /* 新版地圖搜尋框的容器樣式 */
         #pac-container {
             position: absolute;
             top: 10px;
@@ -162,10 +162,8 @@
                 </div>
             </div>
             <div id="map-container">
-                <!-- 修正：使用新版地圖搜尋元件 -->
-                <div id="pac-container">
-                    <gmp-place-autocomplete placeholder="搜尋地點..."></gmp-place-autocomplete>
-                </div>
+                <!-- 修正：只保留新版地圖搜尋元件的容器 -->
+                <div id="pac-container"></div>
                 <div id="map"></div>
             </div>
         </div>
@@ -184,7 +182,7 @@
         // 載入必要的函式庫
         const { Map } = await google.maps.importLibrary("maps");
         const { AdvancedMarkerElement } = await google.maps.importLibrary("marker");
-        const { PlaceAutocompleteElement } = await google.maps.importLibrary("places"); // 修正：載入新版元件
+        const { PlaceAutocompleteElement } = await google.maps.importLibrary("places");
 
         // 建立地圖
         const map = new Map(document.getElementById("map"), {
@@ -202,7 +200,10 @@
 
         // 建立並連結新版搜尋元件
         const pacContainer = document.getElementById("pac-container");
-        const autocomplete = new PlaceAutocompleteElement();
+        const autocomplete = new PlaceAutocompleteElement({
+            // 修正：可以加入 placeholder
+            placeholder: "搜尋地點..."
+        });
         pacContainer.appendChild(autocomplete);
         map.controls[google.maps.ControlPosition.TOP_LEFT].push(pacContainer);
 
