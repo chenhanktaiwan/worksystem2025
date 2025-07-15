@@ -73,11 +73,11 @@
         .weather-today-temp { font-size: 2rem; font-weight: bold; line-height: 1; }
         .weather-today-location { font-size: 1.2rem; font-weight: bold; text-align: right; }
         .weather-forecast { display: flex; justify-content: space-between; padding-top: 15px; }
-        .forecast-day { text-align: center; flex: 1; }
-        .forecast-day .date { font-size: 0.9rem; font-weight: bold; }
+        .forecast-day { text-align: center; flex: 1; padding: 0 5px; }
+        .forecast-day .date { font-size: 0.8rem; font-weight: bold; }
         .forecast-day .icon { font-size: 2rem; margin: 8px 0; }
-        .forecast-day .temp { font-size: 1.1rem; font-weight: bold; }
-        .forecast-day .pop { font-size: 0.8em; opacity: 0.8; }
+        .forecast-day .temp { font-size: 1rem; font-weight: bold; }
+        .forecast-day .pop { font-size: 0.8em; opacity: 0.8; margin-top: 4px;}
 
         /* Google 搜尋小工具樣式 */
         .search-widget { background: #ffffff; border-radius: 8px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
@@ -224,7 +224,7 @@ document.addEventListener('DOMContentLoaded', () => {
         else { messageDiv.innerText = '密碼已成功更新！'; newPasswordInput.value = ''; }
     };
 
-    // --- 天氣相關函式 (修正版) ---
+    // --- 天氣相關函式 (最終修正版) ---
     const getCwaWeatherIcon = (wxValue) => {
         const value = parseInt(wxValue, 10);
         if (value === 1) return '☀️';
@@ -295,22 +295,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 const date = new Date(startTime).toLocaleDateString('en-CA');
                 
                 if (!dailyData[date]) {
-                    dailyData[date] = {};
+                    dailyData[date] = { wx: [], pop: [], minT: [], maxT: [] };
                 }
                 
-                // 優先取白天的資料 (通常是第一個時段)
-                if (!dailyData[date].wx) {
-                    dailyData[date].wx = weatherElements.Wx[i].parameter;
-                }
-                if (!dailyData[date].pop) {
-                     dailyData[date].pop = weatherElements.PoP[i].parameter.parameterName;
-                }
-                if (!dailyData[date].maxT) {
-                    dailyData[date].maxT = weatherElements.MaxT[i].parameter.parameterName;
-                }
-                 if (!dailyData[date].minT) {
-                    dailyData[date].minT = weatherElements.MinT[i].parameter.parameterName;
-                }
+                dailyData[date].wx.push(weatherElements.Wx[i].parameter);
+                dailyData[date].pop.push(weatherElements.PoP[i].parameter.parameterName);
+                dailyData[date].minT.push(weatherElements.MinT[i].parameter.parameterName);
+                dailyData[date].maxT.push(weatherElements.MaxT[i].parameter.parameterName);
             }
             
             // 2. 產生 HTML，顯示未來七天
@@ -320,18 +311,25 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (count >= 7) break; // 最多顯示7天
                 const forecast = dailyData[dateKey];
                 
-                if (!forecast.wx || !forecast.maxT || !forecast.minT || !forecast.pop) continue;
+                if (!forecast.wx[0] || !forecast.maxT[0] || !forecast.minT[0] || !forecast.pop[0]) continue;
 
                 const date = new Date(dateKey);
+                // 修正：只顯示 月/日
                 const day = `${date.getMonth() + 1}/${date.getDate()}`;
-                const icon = getCwaWeatherIcon(forecast.wx.parameterValue);
                 
+                // 優先取白天的天氣狀況 (通常是第一個)
+                const dayWx = forecast.wx[0]; 
+                const icon = getCwaWeatherIcon(dayWx.parameterValue);
+                const maxT = Math.max(...forecast.maxT.map(t => parseInt(t)));
+                const minT = Math.min(...forecast.minT.map(t => parseInt(t)));
+                const pop = Math.max(...forecast.pop.map(p => parseInt(p))); // 取當天最高的降雨機率
+
                 forecastHtml += `
                     <div class="forecast-day">
                         <div class="date">${day}</div>
                         <div class="icon">${icon}</div>
-                        <div class="temp">${forecast.minT}°/${forecast.maxT}°</div>
-                        <div class="pop">💧 ${forecast.pop}%</div>
+                        <div class="temp">${minT}°/${maxT}°</div>
+                        <div class="pop">💧 ${pop}%</div>
                     </div>
                 `;
                 count++;
