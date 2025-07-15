@@ -153,6 +153,7 @@
                     <!-- Gemini AI 搜尋 -->
                     <div class="search-widget gemini-widget">
                         <h4>Gemini AI 搜尋</h4>
+                        <!-- 移除 API 金鑰輸入欄位 -->
                         <form id="gemini-search-form" class="search-form">
                             <input type="text" id="gemini-prompt" placeholder="輸入您的問題..." required>
                             <button type="submit" id="gemini-search-btn">傳送</button>
@@ -215,7 +216,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // --- Gemini AI 搜尋函式 ---
     const handleGeminiSearch = async (event) => {
-        event.preventDefault(); // 防止表單傳統提交
+        event.preventDefault();
         const prompt = geminiPromptInput.value;
         if (!prompt) return;
 
@@ -224,7 +225,11 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const chatHistory = [{ role: "user", parts: [{ text: prompt }] }];
             const payload = { contents: chatHistory };
-            const apiKey = ""; // API 金鑰留空
+            
+            // 修正：直接使用您提供的 API 金鑰
+            // 注意：將 API 金鑰直接寫在前端程式碼中存在安全風險，在正式產品中應避免。
+            // 這裡僅為方便您測試而使用。
+            const apiKey = "AIzaSyD9ThsVtCyGihkiaF4eVphTo9Ploc05qEU"; 
             const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
             
             const response = await fetch(apiUrl, {
@@ -234,6 +239,9 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             if (!response.ok) {
+                if (response.status === 403) {
+                    throw new Error(`API 錯誤 403 (Forbidden)。這通常表示 API 金鑰無效或權限不足。請確認您已啟用 Generative Language API 並檢查金鑰設定。`);
+                }
                 throw new Error(`API 錯誤: ${response.status} ${response.statusText}`);
             }
 
@@ -250,7 +258,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         } catch (error) {
             console.error("Gemini API 錯誤:", error);
-            geminiResultsDiv.innerText = `發生錯誤：${error.message}`;
+            geminiResultsDiv.innerText = `發生錯誤：\n${error.message}`;
         }
     };
 
@@ -271,7 +279,7 @@ document.addEventListener('DOMContentLoaded', () => {
     avatarUploader.addEventListener('change', F_uploadAvatar);
     saveProfileBtn.addEventListener('click', F_updateProfile);
     updatePasswordBtn.addEventListener('click', F_updatePassword);
-    geminiSearchForm.addEventListener('submit', handleGeminiSearch); // 綁定 Gemini 搜尋事件
+    geminiSearchForm.addEventListener('submit', handleGeminiSearch);
 
     // --- 核心邏輯 (穩定版) ---
     _supabase.auth.onAuthStateChange((event, session) => {
