@@ -148,7 +148,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const { createClient } = supabase;
     const _supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     
-    // --- ⬇️ 您的氣象署 API 授權碼已填入 ⬇️ ---
     const CWA_API_KEY = 'CWA-09CB4F50-2A02-4667-902A-3D2AFDFBB662'; 
 
     const loadingOverlay = document.getElementById('loading-overlay');
@@ -232,6 +231,7 @@ document.addEventListener('DOMContentLoaded', () => {
         else { messageDiv.innerText = '密碼已成功更新！'; newPasswordInput.value = ''; }
     };
 
+    // --- 天氣相關函式 (修正版) ---
     const getCwaWeatherIcon = (wxValue) => {
         const value = parseInt(wxValue, 10);
         if (value === 1) return '☀️';
@@ -257,7 +257,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const response = await fetch(apiUrl);
             if (!response.ok) throw new Error(`HTTP 錯誤! 狀態: ${response.status}`);
             const data = await response.json();
-            if (!data.success) throw new Error('API 回應失敗');
+
+            if (!data.success || !data.records.location[0]) {
+                throw new Error('API 回應格式不正確或無資料');
+            }
             
             const locationData = data.records.location[0];
             const weatherElements = {};
@@ -288,18 +291,60 @@ document.addEventListener('DOMContentLoaded', () => {
             `;
 
             let forecastHtml = '<div class="weather-forecast">';
-            for (let i = 1; i < 12; i += 2) {
-                const date = new Date(weatherElements.Wx[i].startTime);
+            const dailyForecasts = {};
+
+            // 1. 整理資料，以日期為 key
+            weatherElements.Wx.forEach((item, index) => {
+                // 確保 startTime 存在
+                if (!item.startTime) return;
+                const date = new Date(item.startTime).toLocaleDateString('en-CA'); // '2025-07-15'
+                if (!dailyForecasts[date]) {
+                    dailyForecasts[date] = {};
+                }
+                // 我們優先採用白天的天氣狀況 (通常是第一個時段)
+                if (!dailyForecasts[date].wx) {
+                    dailyForecasts[date].wx = item.parameter;
+                }
+            });
+            weatherElements.MaxT.forEach(item => {
+                if (!item.startTime) return;
+                const date = new Date(item.startTime).toLocaleDateString('en-CA');
+                if (dailyForecasts[date] && !dailyForecasts[date].maxT) {
+                    dailyForecasts[date].maxT = item.parameter.parameterName;
+                }
+            });
+
+            // 2. 產生 HTML，只顯示未來 6 天
+            let count = 0;
+            const todayStr = new Date().toLocaleDateString('en-CA');
+            for (const dateKey in dailyForecasts) {
+                if (dateKey === todayStr) continue; // 跳過今天
+                if (count >= 6) break;
+
+                const forecast = dailyForecasts[dateKey];
+                if (!forecast.wx || !forecast.maxT) continue; // 確保資料完整
+
+                const date = new Date(dateKey);
                 const day = `${date.getMonth() + 1}/${date.getDate()}`;
-                const icon = getCwaWeatherIcon(weatherElements.Wx[i].parameter.parameterValue);
-                const temp = weatherElements.MaxT[i].parameter.parameterName;
-                forecastHtml += `<div class="forecast-day"><div class="date">${day}</div><div class="icon">${icon}</div><div class="temp">${temp}°</div></div>`;
+                const icon = getCwaWeatherIcon(forecast.wx.parameterValue);
+                const temp = forecast.maxT;
+
+                forecastHtml += `
+                    <div class="forecast-day">
+                        <div class="date">${day}</div>
+                        <div class="icon">${icon}</div>
+                        <div class="temp">${temp}°</div>
+                    </div>
+                `;
+                count++;
             }
             forecastHtml += '</div>';
 
             weatherContainer.innerHTML = `<div class="weather-widget">${todayHtml}${forecastHtml}</div>`;
+
         } catch (error) {
             weatherContainer.innerHTML = `<p style="color: red; text-align: center;">天氣資訊載入失敗: ${error.message}</p>`;
+            console.error(error);
         }
     };
 
