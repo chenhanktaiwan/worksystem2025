@@ -164,7 +164,7 @@
 </div>
 
 <script>
-    // 修正：將地圖初始化函式設為全域函式
+    // 修正：將地圖初始化函式設為全域函式，並確保它在 DOMContentLoaded 之後被安全呼叫
     async function initMap() {
         const taipeiMainStation = { lat: 25.0479, lng: 121.5171 };
         
@@ -208,6 +208,8 @@
             marker.title = place.displayName;
         });
     }
+    // 將 initMap 附加到 window 物件，確保 Google script 能找到它
+    window.initMap = initMap;
 </script>
 
 <script>
@@ -218,7 +220,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const { createClient } = supabase;
     const _supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     
-    // 改回使用氣象署 API 金鑰
     const CWA_API_KEY = 'CWA-09CB4F50-2A02-4667-902A-3D2AFDFBB662'; 
 
     const loadingOverlay = document.getElementById('loading-overlay');
