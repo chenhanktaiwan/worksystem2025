@@ -23,7 +23,7 @@
 </head>
 <body>
 
-<div class="container">
+<div class="container" style="display: none;">
     <div id="auth-view">
         <h2>內部平台登入</h2>
         <input type="email" id="email" placeholder="電子郵件" required />
@@ -46,6 +46,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const _supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     // --- 2. 取得頁面元素 ---
+    const container = document.querySelector('.container');
     const emailInput = document.getElementById('email');
     const passwordInput = document.getElementById('password');
     const messageDiv = document.getElementById('message');
@@ -54,41 +55,26 @@ document.addEventListener('DOMContentLoaded', () => {
     const signUp = async () => {
         messageDiv.innerText = "處理中...";
         const { error } = await _supabase.auth.signUp({ email: emailInput.value, password: passwordInput.value });
-        if (error) {
-            messageDiv.innerText = '註冊失敗: ' + error.message;
-        } else {
-            messageDiv.innerText = "";
-            alert('註冊成功！請檢查您的信箱以完成驗證。');
-        }
+        if (error) { messageDiv.innerText = '註冊失敗: ' + error.message; }
+        else { messageDiv.innerText = ""; alert('註冊成功！請檢查您的信箱以完成驗證。'); }
     };
-
     const signInWithPassword = async () => {
         messageDiv.innerText = "登入中...";
         const { error } = await _supabase.auth.signInWithPassword({ email: emailInput.value, password: passwordInput.value });
-        if (error) {
-            messageDiv.innerText = '登入失敗: ' + error.message;
-        }
+        if (error) { messageDiv.innerText = '登入失敗: ' + error.message; }
     };
-
     const signInWithGoogle = async () => {
         messageDiv.innerText = "";
         await _supabase.auth.signInWithOAuth({ provider: 'google' });
     };
-
     const forgotPassword = async () => {
         const email = prompt("請輸入您註冊的電子郵件地址：");
         if (!email) return; 
-        
         const resetUrl = `${window.location.origin}/reset.html`;
         messageDiv.innerText = "正在發送密碼重設郵件...";
         const { error } = await _supabase.auth.resetPasswordForEmail(email, { redirectTo: resetUrl });
-        
-        if (error) {
-            messageDiv.innerText = "錯誤：" + error.message;
-        } else {
-            messageDiv.innerText = "";
-            alert("密碼重設郵件已成功寄出，請檢查您的信箱。");
-        }
+        if (error) { messageDiv.innerText = "錯誤：" + error.message; }
+        else { messageDiv.innerText = ""; alert("密碼重設郵件已成功寄出，請檢查您的信箱。"); }
     };
     
     // --- 4. 事件綁定 ---
@@ -97,11 +83,17 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('google-btn').addEventListener('click', signInWithGoogle);
     document.getElementById('forgot-password-link').addEventListener('click', forgotPassword);
 
-    // --- 5. 核心：監聽認證狀態變化，並在登入成功時跳轉 ---
+    // --- 5. 核心：監聽認證狀態變化 (穩定版) ---
     _supabase.auth.onAuthStateChange((event, session) => {
-        // 當使用者登入成功，或初始檢查發現已登入時
-        if (session && session.user) {
-            window.location.href = '/app.html';
+        if (event === 'INITIAL_SESSION') {
+            if (session) {
+                window.location.href = `${window.location.origin}/app.html`;
+            } else {
+                // 只有在確認未登入後，才顯示登入表單
+                container.style.display = 'block';
+            }
+        } else if (event === 'SIGNED_IN') {
+             window.location.href = `${window.location.origin}/app.html`;
         }
     });
 });
