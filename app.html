@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>我的應用程式</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Google Maps API Script - 已填入您的金鑰 -->
+    <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBfAUYXPVz9lqN5QPyzcNmeCg5ect9ZNcA&callback=initMap"></script>
     <style>
         /* 全局與佈局 */
         :root { --sidebar-width: 240px; }
@@ -64,7 +66,7 @@
         .dashboard-item { flex: 1; min-width: 300px; }
 
         /* 天氣小工具樣式 */
-        .weather-widget { background: #2D9CDB; color: white; border-radius: 8px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); font-family: "Microsoft JhengHei", "微軟正黑體", sans-serif; }
+        .weather-widget { background: #4A90E2; color: white; border-radius: 8px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); font-family: "Microsoft JhengHei", "微軟正黑體", sans-serif; }
         .weather-today { display: flex; justify-content: space-between; align-items: center; padding-bottom: 15px; border-bottom: 1px solid rgba(255, 255, 255, 0.3); }
         .weather-today-main { display: flex; align-items: center; gap: 15px; }
         .weather-today-icon { font-size: 3.5rem; line-height: 1; }
@@ -72,8 +74,8 @@
         .weather-today-details .pop { font-size: 0.9rem; opacity: 0.9; }
         .weather-today-temp { font-size: 2rem; font-weight: bold; line-height: 1; }
         .weather-today-location { font-size: 1.2rem; font-weight: bold; text-align: right; }
-        .weather-forecast { display: flex; justify-content: space-between; padding-top: 15px; }
-        .forecast-day { text-align: center; flex: 1; padding: 0 5px; }
+        .weather-forecast { display: flex; justify-content: space-between; padding-top: 15px; overflow-x: auto; }
+        .forecast-day { text-align: center; flex: 1; min-width: 60px; padding: 0 5px; }
         .forecast-day .date { font-size: 0.8rem; font-weight: bold; }
         .forecast-day .icon { font-size: 2rem; margin: 8px 0; }
         .forecast-day .temp { font-size: 1rem; font-weight: bold; }
@@ -90,26 +92,13 @@
 
         /* Gemini 搜尋結果樣式 */
         .gemini-widget { margin-top: 2rem; }
-        #gemini-results {
-            margin-top: 1rem;
-            padding: 15px;
-            border: 1px solid #e0e0e0;
-            border-radius: 8px;
-            background-color: #f9f9f9;
-            min-height: 50px;
-            white-space: pre-wrap; /* 讓換行符號生效 */
-            text-align: left;
-        }
-        .loading-spinner {
-            border: 4px solid #f3f3f3;
-            border-top: 4px solid #3498db;
-            border-radius: 50%;
-            width: 30px;
-            height: 30px;
-            animation: spin 1s linear infinite;
-            margin: 10px auto;
-        }
+        #gemini-results { margin-top: 1rem; padding: 15px; border: 1px solid #e0e0e0; border-radius: 8px; background-color: #f9f9f9; min-height: 50px; white-space: pre-wrap; text-align: left; }
+        .loading-spinner { border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; margin: 10px auto; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* 地圖樣式 */
+        #map-container { margin-top: 2rem; }
+        #map { height: 400px; width: 100%; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
     </style>
 </head>
 <body>
@@ -142,7 +131,6 @@
                     <p>正在載入天氣資訊...</p>
                 </div>
                 <div id="search-column" class="dashboard-item">
-                    <!-- Google 搜尋 -->
                     <div class="search-widget">
                         <h4>Google 搜尋</h4>
                         <form action="https://www.google.com/search" method="get" target="_blank" class="search-form">
@@ -150,10 +138,8 @@
                             <button type="submit" id="google-search-btn">搜尋</button>
                         </form>
                     </div>
-                    <!-- Gemini AI 搜尋 -->
                     <div class="search-widget gemini-widget">
                         <h4>Gemini AI 搜尋</h4>
-                        <!-- 恢復 API 金鑰輸入欄位 -->
                         <input type="password" id="user-gemini-key" placeholder="貼上您的 Gemini API 金鑰 (選填)" style="margin-bottom: 15px; width: 100%; box-sizing: border-box;">
                         <form id="gemini-search-form" class="search-form">
                             <input type="text" id="gemini-prompt" placeholder="輸入您的問題..." required>
@@ -162,6 +148,9 @@
                         <div id="gemini-results">請在這裡輸入問題，向 Gemini 提問。</div>
                     </div>
                 </div>
+            </div>
+            <div id="map-container">
+                <div id="map"></div>
             </div>
         </div>
         <!-- 其他視圖 ... -->
@@ -172,6 +161,21 @@
 </div>
 
 <script>
+    // 將地圖初始化函式設為全域函式
+    function initMap() {
+        const taipeiMainStation = { lat: 25.0479, lng: 121.5171 };
+        const map = new google.maps.Map(document.getElementById("map"), {
+            zoom: 14,
+            center: taipeiMainStation,
+        });
+        const marker = new google.maps.Marker({
+            position: taipeiMainStation,
+            map: map,
+        });
+    }
+</script>
+
+<script>
 document.addEventListener('DOMContentLoaded', () => {
     // --- 初始化與取得元素 ---
     const SUPABASE_URL = 'https://wvdfuqvebqolvpwhdelg.supabase.co';
@@ -179,11 +183,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const { createClient } = supabase;
     const _supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     
-    const CWA_API_KEY = 'CWA-09CB4F50-2A02-4667-902A-3D2AFDFBB662'; 
+    // 您的 Google API 金鑰 (地圖和天氣共用)
+    const GOOGLE_API_KEY = 'AIzaSyBfAUYXPVz9lqN5QPyzcNmeCg5ect9ZNcA'; 
 
     const loadingOverlay = document.getElementById('loading-overlay');
     const appContainer = document.querySelector('.app-container');
     const weatherContainer = document.getElementById('weather-forecast-container');
+    // ... 其他元素宣告 ...
     const sidebarToggleBtn = document.getElementById('sidebar-toggle-btn');
     const sidebarAvatar = document.getElementById('sidebar-avatar-preview');
     const sidebarUsername = document.getElementById('sidebar-username-preview');
@@ -199,7 +205,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const passwordSection = document.getElementById('password-section');
     const newPasswordInput = document.getElementById('new-password');
     const updatePasswordBtn = document.getElementById('update-password-btn');
-    // Gemini 搜尋元素
     const geminiSearchForm = document.getElementById('gemini-search-form');
     const geminiPromptInput = document.getElementById('gemini-prompt');
     const geminiResultsDiv = document.getElementById('gemini-results');
@@ -207,58 +212,91 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let currentUser = null;
 
-    // --- 功能函式 ---
+    // --- 功能函式 (與上一版相同) ---
     const loadUserProfile = (user) => { /* ... */ };
     const switchView = (viewName) => { /* ... */ };
     const signOut = async () => { /* ... */ };
     const updateProfile = async () => { /* ... */ };
     const uploadAvatar = async (event) => { /* ... */ };
     const updatePassword = async () => { /* ... */ };
-    const fetchWeatherForecast = async () => { /* ... */ };
-    
-    // --- Gemini AI 搜尋函式 ---
-    const handleGeminiSearch = async (event) => {
-        event.preventDefault();
-        const prompt = geminiPromptInput.value;
-        if (!prompt) return;
+    const handleGeminiSearch = async (event) => { /* ... */ };
 
-        geminiResultsDiv.innerHTML = '<div class="loading-spinner"></div><p style="text-align:center;">思考中...</p>';
+    // --- 新增：Google 天氣相關函式 ---
+    const getGoogleWeatherIcon = (condition) => {
+        const lowerCaseCondition = condition.toLowerCase();
+        if (lowerCaseCondition.includes('thunderstorm')) return '⛈️';
+        if (lowerCaseCondition.includes('rain') || lowerCaseCondition.includes('drizzle') || lowerCaseCondition.includes('showers')) return '🌧️';
+        if (lowerCaseCondition.includes('snow') || lowerCaseCondition.includes('sleet')) return '❄️';
+        if (lowerCaseCondition.includes('fog') || lowerCaseCondition.includes('haze') || lowerCaseCondition.includes('mist')) return '🌫️';
+        if (lowerCaseCondition.includes('cloudy')) return '☁️';
+        if (lowerCaseCondition.includes('partly cloudy')) return '🌤️';
+        if (lowerCaseCondition.includes('clear') || lowerCaseCondition.includes('sunny')) return '☀️';
+        return '❓';
+    };
+
+    const fetchGoogleWeather = async () => {
+        if (!GOOGLE_API_KEY) {
+            weatherContainer.innerHTML = `<p style="color: red;">請在程式碼中填入您的 Google API 金鑰。</p>`;
+            return;
+        }
+        const location = { latitude: 25.0478, longitude: 121.5171 }; // 臺北市
+        const apiUrl = `https://weather.googleapis.com/v1/forecast?location.latitude=${location.latitude}&location.longitude=${location.longitude}&languageCode=zh-TW&params=current_conditions,daily_forecast&key=${GOOGLE_API_KEY}`;
 
         try {
-            const chatHistory = [{ role: "user", parts: [{ text: prompt }] }];
-            const payload = { contents: chatHistory };
+            const response = await fetch(apiUrl);
+            if (!response.ok) throw new Error(`Google Weather API 錯誤! 狀態: ${response.status}`);
+            const data = await response.json();
             
-            // 修正：優先使用使用者提供的金鑰，若無則使用預設的空金鑰
-            const apiKey = userGeminiKeyInput.value.trim() || ""; 
-            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
-            
-            const response = await fetch(apiUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-
-            if (!response.ok) {
-                if (response.status === 403) {
-                    throw new Error(`API 錯誤 403 (Forbidden)。這通常表示 API 金鑰無效或權限不足。請確認您已啟用 Generative Language API 並檢查金鑰設定。`);
-                }
-                throw new Error(`API 錯誤: ${response.status} ${response.statusText}`);
+            if (!data.dailyForecasts || !data.currentConditions) {
+                throw new Error('API 回應格式不正確');
             }
 
-            const result = await response.json();
-            
-            if (result.candidates && result.candidates.length > 0 &&
-                result.candidates[0].content && result.candidates[0].content.parts &&
-                result.candidates[0].content.parts.length > 0) {
-                const text = result.candidates[0].content.parts[0].text;
-                geminiResultsDiv.innerText = text;
-            } else {
-                geminiResultsDiv.innerText = '抱歉，無法取得有效的回覆。';
+            // --- 建立今日天氣 HTML ---
+            const today = data.currentConditions;
+            const todayForecast = data.dailyForecasts[0];
+            const todayHtml = `
+                <div class="weather-today">
+                    <div class="weather-today-main">
+                        <div class="weather-today-icon">${getGoogleWeatherIcon(today.condition)}</div>
+                        <div class="weather-today-details">
+                            <div class="condition">${today.condition}</div>
+                            <div class="pop">濕度：${Math.round(today.humidity * 100)}%</div>
+                        </div>
+                    </div>
+                    <div style="text-align: right;">
+                        <div class="weather-today-temp">${Math.round(todayForecast.temperature.low)}° / ${Math.round(todayForecast.temperature.high)}°</div>
+                        <div class="weather-today-location">臺北市</div>
+                    </div>
+                </div>
+            `;
+
+            // --- 建立未來預報 HTML ---
+            let forecastHtml = '<div class="weather-forecast">';
+            for (let i = 1; i < data.dailyForecasts.length && i <= 7; i++) {
+                const forecast = data.dailyForecasts[i];
+                const date = new Date(forecast.date.year, forecast.date.month - 1, forecast.date.day);
+                const day = `${date.getMonth() + 1}/${date.getDate()}`;
+                const icon = getGoogleWeatherIcon(forecast.condition);
+                const tempHigh = Math.round(forecast.temperature.high);
+                const tempLow = Math.round(forecast.temperature.low);
+                const pop = Math.round(forecast.precipitationChance * 100);
+
+                forecastHtml += `
+                    <div class="forecast-day">
+                        <div class="date">${day}</div>
+                        <div class="icon">${icon}</div>
+                        <div class="temp">${tempLow}°/${tempHigh}°</div>
+                        <div class="pop">💧 ${pop}%</div>
+                    </div>
+                `;
             }
+            forecastHtml += '</div>';
+            
+            weatherContainer.innerHTML = `<div class="weather-widget">${todayHtml}${forecastHtml}</div>`;
 
         } catch (error) {
-            console.error("Gemini API 錯誤:", error);
-            geminiResultsDiv.innerText = `發生錯誤：\n${error.message}`;
+            weatherContainer.innerHTML = `<p style="color: red; text-align: center;">天氣資訊載入失敗: ${error.message}</p>`;
+            console.error(error);
         }
     };
 
@@ -269,17 +307,23 @@ document.addEventListener('DOMContentLoaded', () => {
     const F_updateProfile = async () => { messageDiv.innerText = "更新中..."; const { data, error } = await _supabase.auth.updateUser({ data: { nickname: nicknameInput.value.trim(), bio: bioTextarea.value.trim() } }); if (error) { messageDiv.innerText = "更新失敗：" + error.message; } else { messageDiv.innerText = "個人資料已成功儲存！"; F_loadUserProfile(data.user); } };
     const F_uploadAvatar = async (event) => { const file = event.target.files[0]; if (!file || !currentUser) return; const fileExt = file.name.split('.').pop(); const filePath = `${currentUser.id}/${Date.now()}.${fileExt}`; messageDiv.innerText = "大頭貼上傳中..."; const { error: uploadError } = await _supabase.storage.from('avatars').upload(filePath, file); if (uploadError) { messageDiv.innerText = "上傳失敗：" + uploadError.message; return; } const { data: urlData } = _supabase.storage.from('avatars').getPublicUrl(filePath); const { data, error: updateError } = await _supabase.auth.updateUser({ data: { avatar_url: urlData.publicUrl } }); if (updateError) { messageDiv.innerText = "更新大頭貼失敗：" + updateError.message; } else { messageDiv.innerText = "大頭貼已更新！"; F_loadUserProfile(data.user); } };
     const F_updatePassword = async () => { const newPassword = newPasswordInput.value; if (!newPassword || newPassword.length < 6) { messageDiv.innerText = '密碼長度至少需要 6 個字元。'; return; } messageDiv.innerText = "更新中..."; const { error } = await _supabase.auth.updateUser({ password: newPassword }); if (error) { messageDiv.innerText = '密碼更新失敗: ' + error.message; } else { messageDiv.innerText = '密碼已成功更新！'; newPasswordInput.value = ''; } };
-    const F_fetchWeatherForecast = async () => { try { const lat = 25.0478, lon = 121.5318; const apiUrl = `https://opendata.cwa.gov.tw/api/v1/rest/datastore/F-C0032-001?Authorization=${CWA_API_KEY}&locationName=${encodeURIComponent("臺北市")}&elementName=Wx,PoP,MinT,MaxT`; const response = await fetch(apiUrl); if (!response.ok) throw new Error(`HTTP 錯誤! 狀態: ${response.status}`); const data = await response.json(); if (!data.success || !data.records.location[0]) { throw new Error('API 回應格式不正確或無資料'); } const locationData = data.records.location[0]; const weatherElements = {}; locationData.weatherElement.forEach(elem => { weatherElements[elem.elementName] = elem.time; }); const getCwaWeatherIcon = (wxValue) => { const value = parseInt(wxValue, 10); if (value === 1) return '☀️'; if (value >= 2 && value <= 3) return '🌤️'; if (value >= 4 && value <= 7) return '☁️'; if (value >= 8 && value <= 22) return '🌧️'; if (value >= 23 && value <= 28) return '🌫️'; if (value >= 29 && value <= 39) return '⛈️'; if (value >= 41 && value <= 42) return '❄️'; return '❓'; }; const todayWx = weatherElements.Wx[0].parameter.parameterName; const todayPop = weatherElements.PoP[0].parameter.parameterName; const todayMaxT = weatherElements.MaxT[0].parameter.parameterName; const todayMinT = weatherElements.MinT[0].parameter.parameterName; const todayWxValue = weatherElements.Wx[0].parameter.parameterValue; const todayHtml = `<div class="weather-today"><div class="weather-today-main"><div class="weather-today-icon">${getCwaWeatherIcon(todayWxValue)}</div><div class="weather-today-details"><div class="condition">${todayWx}</div><div class="pop">降雨機率：${todayPop}%</div></div></div><div style="text-align: right;"><div class="weather-today-temp">${todayMinT}° / ${todayMaxT}°</div><div class="weather-today-location">臺北市</div></div></div>`; let forecastHtml = '<div class="weather-forecast">'; const dailyData = {}; for (let i = 0; i < weatherElements.Wx.length; i++) { const startTime = weatherElements.Wx[i].startTime; if (!startTime) continue; const date = new Date(startTime).toLocaleDateString('en-CA'); if (!dailyData[date]) { dailyData[date] = { wx: [], pop: [], minT: [], maxT: [] }; } dailyData[date].wx.push(weatherElements.Wx[i].parameter); dailyData[date].pop.push(weatherElements.PoP[i].parameter.parameterName); dailyData[date].minT.push(weatherElements.MinT[i].parameter.parameterName); dailyData[date].maxT.push(weatherElements.MaxT[i].parameter.parameterName); } const dates = Object.keys(dailyData).sort(); let count = 0; for (const dateKey of dates) { if (count >= 7) break; const forecast = dailyData[dateKey]; if (!forecast.wx[0] || !forecast.maxT[0] || !forecast.minT[0] || !forecast.pop[0]) continue; const date = new Date(dateKey); const day = `${date.getMonth() + 1}/${date.getDate()}`; const dayWx = forecast.wx[0]; const icon = getCwaWeatherIcon(dayWx.parameterValue); const maxT = Math.max(...forecast.maxT.map(t => parseInt(t))); const minT = Math.min(...forecast.minT.map(t => parseInt(t))); const pop = Math.max(...forecast.pop.map(p => parseInt(p))); forecastHtml += `<div class="forecast-day"><div class="date">${day}</div><div class="icon">${icon}</div><div class="temp">${minT}°/${maxT}°</div><div class="pop">💧 ${pop}%</div></div>`; count++; } forecastHtml += '</div>'; weatherContainer.innerHTML = `<div class="weather-widget">${todayHtml}${forecastHtml}</div>`; } catch (error) { weatherContainer.innerHTML = `<p style="color: red; text-align: center;">天氣資訊載入失敗: ${error.message}</p>`; console.error(error); } };
+    const F_handleGeminiSearch = async (event) => { event.preventDefault(); const prompt = geminiPromptInput.value; if (!prompt) return; geminiResultsDiv.innerHTML = '<div class="loading-spinner"></div><p style="text-align:center;">思考中...</p>'; try { const chatHistory = [{ role: "user", parts: [{ text: prompt }] }]; const payload = { contents: chatHistory }; const apiKey = userGeminiKeyInput.value.trim() || ""; const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`; const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }); if (!response.ok) { if (response.status === 403) { throw new Error(`API 錯誤 403 (Forbidden)。這通常表示 API 金鑰無效或權限不足。請確認您已啟用 Generative Language API 並檢查金鑰設定。`); } throw new Error(`API 錯誤: ${response.status} ${response.statusText}`); } const result = await response.json(); if (result.candidates && result.candidates.length > 0 && result.candidates[0].content && result.candidates[0].content.parts && result.candidates[0].content.parts.length > 0) { const text = result.candidates[0].content.parts[0].text; geminiResultsDiv.innerText = text; } else { geminiResultsDiv.innerText = '抱歉，無法取得有效的回覆。'; } } catch (error) { console.error("Gemini API 錯誤:", error); geminiResultsDiv.innerText = `發生錯誤：\n${error.message}`; } };
 
     // --- 事件綁定 ---
     signOutBtn.addEventListener('click', F_signOut);
     sidebarToggleBtn.addEventListener('click', () => { appContainer.classList.toggle('sidebar-collapsed'); });
-    navLinks.forEach(link => { link.addEventListener('click', (e) => { e.preventDefault(); const viewName = link.getAttribute('data-view'); F_switchView(viewName); }); });
+    navLinks.forEach(link => {
+        link.addEventListener('click', (e) => {
+            e.preventDefault();
+            const viewName = link.getAttribute('data-view');
+            F_switchView(viewName);
+        });
+    });
     profileAvatar.addEventListener('click', () => avatarUploader.click());
     avatarUploader.addEventListener('change', F_uploadAvatar);
     saveProfileBtn.addEventListener('click', F_updateProfile);
     updatePasswordBtn.addEventListener('click', F_updatePassword);
-    geminiSearchForm.addEventListener('submit', handleGeminiSearch);
+    geminiSearchForm.addEventListener('submit', F_handleGeminiSearch);
 
     // --- 核心邏輯 (穩定版) ---
     _supabase.auth.onAuthStateChange((event, session) => {
@@ -289,7 +333,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 appContainer.style.display = 'flex';
                 F_loadUserProfile(session.user);
                 F_switchView('home');
-                F_fetchWeatherForecast();
+                fetchGoogleWeather(); // 改為呼叫 Google Weather API
             } else {
                 window.location.href = `${window.location.origin}/index.html`;
             }
@@ -303,19 +347,3 @@ document.addEventListener('DOMContentLoaded', () => {
 </script>
 </body>
 </html>
-```
-
-我已經將 Canvas 中的程式碼更新。
-
----
-
-### **⚠️ 非常重要的安全建議**
-
-您收到的這個 GitHub 安全警示，提醒了我們一件非常重要的事：**絕對不要將任何「金鑰 (Key)」或「密碼 (Secret)」直接寫在前端程式碼中，並上傳到公開的程式碼倉庫。**
-
-我已經幫您從程式碼中移除了硬編碼的金鑰，但**強烈建議您立即採取以下兩個步驟**，來確保您的帳戶安全：
-
-1.  **停用舊金鑰**：請立刻回到您取得這組 Google API 金鑰的管理後台，將這組已經暴露的 `AIzaSy...` 金鑰**刪除**或**停用**。
-2.  **建立新金鑰**：重新建立一組**新的 API 金鑰**，並妥善保管。未來，請透過我們還原的「輸入框」來貼上新金鑰進行測試。
-
-完成這個安全步驟後，您的應用程式就既安全又能正常運
