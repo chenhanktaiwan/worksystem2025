@@ -8,16 +8,20 @@
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans TC", sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; background-color: #f8f9fa; margin: 0; padding: 2rem 0; }
         .container { background: white; padding: 2.5rem; border-radius: 8px; box-shadow: 0 8px 30px rgba(0,0,0,0.1); width: 480px; box-sizing: border-box; }
-        h3 { color: #343a40; }
+        h3 { color: #343a40; text-align: center; }
         p { color: #6c757d; font-size: 0.9em; }
-        input[type="text"], textarea { width: 100%; padding: 12px; margin-bottom: 12px; border: 1px solid #ced4da; border-radius: 4px; box-sizing: border-box; font-size: 1em; }
-        button { width: 100%; padding: 12px; margin-bottom: 10px; border: none; border-radius: 4px; color: white; font-weight: bold; cursor: pointer; font-size: 1em; }
+        label { display: block; text-align: left; margin-top: 1rem; margin-bottom: 5px; font-weight: bold; color: #495057; }
+        input[type="text"], input[type="password"], textarea { width: 100%; padding: 12px; margin-bottom: 12px; border: 1px solid #ced4da; border-radius: 4px; box-sizing: border-box; font-size: 1em; }
+        button { width: 100%; padding: 12px; margin-top: 10px; border: none; border-radius: 4px; color: white; font-weight: bold; cursor: pointer; font-size: 1em; transition: opacity 0.2s; }
+        button:hover { opacity: 0.85; }
         #save-profile-btn { background-color: #007bff; }
-        #signout-btn { background-color: #6c757d; margin-top: 1rem; }
+        #update-password-btn { background-color: #17a2b8; }
+        #signout-btn { background-color: #6c757d; }
         #message { margin-top: 15px; font-weight: bold; min-height: 1.2em; text-align: center; }
         .avatar-section { display: flex; flex-direction: column; align-items: center; margin-bottom: 1.5rem; }
         #avatar-preview { width: 120px; height: 120px; border-radius: 50%; object-fit: cover; border: 3px solid #eee; margin-bottom: 1rem; cursor: pointer; }
         #avatar-uploader { display: none; }
+        hr { border: 0; border-top: 1px solid #dee2e6; margin: 20px 0; }
     </style>
 </head>
 <body>
@@ -26,7 +30,7 @@
     <h3>個人管理後台</h3>
     
     <div class="avatar-section">
-        <img id="avatar-preview" src="https://via.placeholder.com/120" alt="大頭貼預覽" title="點擊更換大頭貼">
+        <img id="avatar-preview" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMjAiIGhlaWdodD0iMTIwIiB2aWV3Qm94PSIwIDAgMTIwIDEyMCI+CiAgPHJlY3Qgd2lkdGg9IjEyMCIgaGVpZ2h0PSIxMjAiIHN0eWxlPSJmaWxsOiNjZWMwY2U7IiAvPgogIDxwYXRoIGQ9Ik02MCA2MEM3Ni41NjkgNjAgOTAgNDYuNTY5IDkwIDMwQzkwIDEzLjQzMSA3Ni41NjkgMCA2MCAwQzQzLjQzMSAwIDMwIDEzLjQzMSA5MCAzMEMzMCA0Ni41NjkgNDMuNDMxIDYwIDYwIDYwWk02MCA3MEMzNy45MDkgNzEgMjAgODguOTA5IDIwIDExMVYxMjBIMTAwVjExMUMxMDAgODguOTA5IDgyLjA5MSA3MSA2MCA3MVoiIGZpbGw9IiNhYWFiYjAiLz4KPC9zdmc+" alt="大頭貼預覽" title="點擊更換大頭貼">
         <input type="file" id="avatar-uploader" accept="image/png, image/jpeg">
         <p>歡迎您, <strong id="user-email"></strong></p>
     </div>
@@ -39,9 +43,14 @@
     
     <button id="save-profile-btn">儲存個人資料</button>
 
-    <div id="password-section">
-      </div>
+    <div id="password-section" style="display: none;">
+      <hr>
+      <label for="new-password">變更密碼</label>
+      <input type="password" id="new-password" placeholder="輸入新密碼">
+      <button id="update-password-btn">更新密碼</button>
+    </div>
 
+    <hr>
     <button id="signout-btn">登出</button>
     <div id="message"></div>
 </div>
@@ -53,7 +62,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const { createClient } = supabase;
     const _supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    // 取得頁面元素
     const userEmailSpan = document.getElementById('user-email');
     const nicknameInput = document.getElementById('nickname');
     const bioTextarea = document.getElementById('bio');
@@ -62,100 +70,113 @@ document.addEventListener('DOMContentLoaded', () => {
     const saveProfileBtn = document.getElementById('save-profile-btn');
     const signOutBtn = document.getElementById('signout-btn');
     const messageDiv = document.getElementById('message');
+    const passwordSection = document.getElementById('password-section');
+    const newPasswordInput = document.getElementById('new-password');
+    const updatePasswordBtn = document.getElementById('update-password-btn');
     
     let currentUser = null;
 
-    // 載入使用者資料
     const loadUserProfile = (user) => {
         currentUser = user;
         userEmailSpan.innerText = user.email;
         nicknameInput.value = user.user_metadata.nickname || '';
         bioTextarea.value = user.user_metadata.bio || '';
-        avatarPreview.src = user.user_metadata.avatar_url || 'https://via.placeholder.com/120';
+        avatarPreview.src = user.user_metadata.avatar_url || 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMjAiIGhlaWdodD0iMTIwIiB2aWV3Qm94PSIwIDAgMTIwIDEyMCI+CiAgPHJlY3Qgd2lkdGg9IjEyMCIgaGVpZ2h0PSIxMjAiIHN0eWxlPSJmaWxsOiNjZWMwY2U7IiAvPgogIDxwYXRoIGQ9Ik02MCA2MEM3Ni41NjkgNjAgOTAgNDYuNTY5IDkwIDMwQzkwIDEzLjQzMSA3Ni41NjkgMCA2MCAwQzQzLjQzMSAwIDMwIDEzLjQzMSA5MCAzMEMzMCA0Ni41NjkgNDMuNDMxIDYwIDYwIDYwWk02MCA3MEMzNy45MDkgNzEgMjAgODguOTA5IDIwIDExMVYxMjBIMTAwVjExMUMxMDAgODguOTA5IDgyLjA5MSA3MSA2MCA3MVoiIGZpbGw9IiNhYWFiYjAiLz4KPC9zdmc+';
+        
+        if (user.app_metadata.provider !== 'google') {
+            passwordSection.style.display = 'block';
+        } else {
+            passwordSection.style.display = 'none';
+        }
     };
 
-    // 更新使用者資料
     const updateProfile = async () => {
         messageDiv.innerText = "更新中...";
         const { data, error } = await _supabase.auth.updateUser({
             data: { 
-                nickname: nicknameInput.value,
-                bio: bioTextarea.value
+                nickname: nicknameInput.value.trim(),
+                bio: bioTextarea.value.trim()
             }
         });
         if (error) {
+            messageDiv.className = 'error';
             messageDiv.innerText = "更新失敗：" + error.message;
         } else {
+            messageDiv.className = 'success';
             messageDiv.innerText = "個人資料已成功儲存！";
-            loadUserProfile(data.user); // 重新載入一次確保資料同步
+            loadUserProfile(data.user);
         }
     };
     
-    // 上傳大頭貼
     const uploadAvatar = async (event) => {
         const file = event.target.files[0];
-        if (!file) return;
-
-        const filePath = `${currentUser.id}/${Date.now()}`;
+        if (!file || !currentUser) return;
+        
+        const fileExt = file.name.split('.').pop();
+        const filePath = `${currentUser.id}/${Date.now()}.${fileExt}`;
         messageDiv.innerText = "大頭貼上傳中...";
+        messageDiv.className = '';
 
-        // 步驟1: 上傳檔案
-        const { error: uploadError } = await _supabase.storage
-            .from('avatars')
-            .upload(filePath, file);
-
+        const { error: uploadError } = await _supabase.storage.from('avatars').upload(filePath, file);
         if (uploadError) {
+            messageDiv.className = 'error';
             messageDiv.innerText = "上傳失敗：" + uploadError.message;
             return;
         }
-
-        // 步驟2: 取得檔案的公開 URL
-        const { data: urlData } = _supabase.storage
-            .from('avatars')
-            .getPublicUrl(filePath);
         
-        const publicUrl = urlData.publicUrl;
-
-        // 步驟3: 將 URL 存回使用者資料中
+        const { data: urlData } = _supabase.storage.from('avatars').getPublicUrl(filePath);
         const { data, error: updateError } = await _supabase.auth.updateUser({
-            data: { avatar_url: publicUrl }
+            data: { avatar_url: urlData.publicUrl }
         });
 
         if (updateError) {
+            messageDiv.className = 'error';
             messageDiv.innerText = "更新大頭貼失敗：" + updateError.message;
         } else {
+            messageDiv.className = 'success';
             messageDiv.innerText = "大頭貼已更新！";
             loadUserProfile(data.user);
         }
     };
 
-    // 登出
-    const signOut = async () => {
-        await _supabase.auth.signOut();
-        window.location.href = '/index.html'; // 登出後跳回首頁
-    };
-
-    // 頁面載入時的核心邏輯
-    const checkUserOnLoad = async () => {
-        const { data: { session } } = await _supabase.auth.getSession();
-        if (session && session.user) {
-            loadUserProfile(session.user);
+    const updatePassword = async () => {
+        const newPassword = newPasswordInput.value;
+        if (!newPassword || newPassword.length < 6) {
+            messageDiv.className = 'error';
+            messageDiv.innerText = '密碼長度至少需要 6 個字元。';
+            return;
+        }
+        messageDiv.innerText = "更新中...";
+        const { error } = await _supabase.auth.updateUser({ password: newPassword });
+        if (error) {
+            messageDiv.className = 'error';
+            messageDiv.innerText = '密碼更新失敗: ' + error.message;
         } else {
-            // 如果沒有登入，跳轉回登入頁
-            alert("請先登入！");
-            window.location.href = '/index.html';
+            messageDiv.className = 'success';
+            messageDiv.innerText = '密碼已成功更新！';
+            newPasswordInput.value = '';
         }
     };
 
-    // 綁定事件
+    const signOut = async () => {
+        await _supabase.auth.signOut();
+    };
+
     saveProfileBtn.addEventListener('click', updateProfile);
     signOutBtn.addEventListener('click', signOut);
-    avatarPreview.addEventListener('click', () => avatarUploader.click()); // 點擊圖片觸發檔案選擇
+    avatarPreview.addEventListener('click', () => avatarUploader.click());
     avatarUploader.addEventListener('change', uploadAvatar);
-
-    // 執行頁面載入檢查
-    checkUserOnLoad();
+    updatePasswordBtn.addEventListener('click', updatePassword);
+    
+    _supabase.auth.onAuthStateChange((event, session) => {
+        if (!session) {
+            window.location.href = '/index.html';
+        } else if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'USER_UPDATED') {
+            loadUserProfile(session.user);
+        }
+    });
 });
 </script>
+
 </body>
 </html>
