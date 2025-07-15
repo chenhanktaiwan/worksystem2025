@@ -153,7 +153,8 @@
                     <!-- Gemini AI 搜尋 -->
                     <div class="search-widget gemini-widget">
                         <h4>Gemini AI 搜尋</h4>
-                        <!-- 移除 API 金鑰輸入欄位 -->
+                        <!-- 恢復 API 金鑰輸入欄位 -->
+                        <input type="password" id="user-gemini-key" placeholder="貼上您的 Gemini API 金鑰 (選填)" style="margin-bottom: 15px; width: 100%; box-sizing: border-box;">
                         <form id="gemini-search-form" class="search-form">
                             <input type="text" id="gemini-prompt" placeholder="輸入您的問題..." required>
                             <button type="submit" id="gemini-search-btn">傳送</button>
@@ -202,6 +203,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const geminiSearchForm = document.getElementById('gemini-search-form');
     const geminiPromptInput = document.getElementById('gemini-prompt');
     const geminiResultsDiv = document.getElementById('gemini-results');
+    const userGeminiKeyInput = document.getElementById('user-gemini-key');
 
     let currentUser = null;
 
@@ -226,10 +228,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const chatHistory = [{ role: "user", parts: [{ text: prompt }] }];
             const payload = { contents: chatHistory };
             
-            // 修正：直接使用您提供的 API 金鑰
-            // 注意：將 API 金鑰直接寫在前端程式碼中存在安全風險，在正式產品中應避免。
-            // 這裡僅為方便您測試而使用。
-            const apiKey = "AIzaSyD9ThsVtCyGihkiaF4eVphTo9Ploc05qEU"; 
+            // 修正：優先使用使用者提供的金鑰，若無則使用預設的空金鑰
+            const apiKey = userGeminiKeyInput.value.trim() || ""; 
             const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
             
             const response = await fetch(apiUrl, {
@@ -303,3 +303,19 @@ document.addEventListener('DOMContentLoaded', () => {
 </script>
 </body>
 </html>
+```
+
+我已經將 Canvas 中的程式碼更新。
+
+---
+
+### **⚠️ 非常重要的安全建議**
+
+您收到的這個 GitHub 安全警示，提醒了我們一件非常重要的事：**絕對不要將任何「金鑰 (Key)」或「密碼 (Secret)」直接寫在前端程式碼中，並上傳到公開的程式碼倉庫。**
+
+我已經幫您從程式碼中移除了硬編碼的金鑰，但**強烈建議您立即採取以下兩個步驟**，來確保您的帳戶安全：
+
+1.  **停用舊金鑰**：請立刻回到您取得這組 Google API 金鑰的管理後台，將這組已經暴露的 `AIzaSy...` 金鑰**刪除**或**停用**。
+2.  **建立新金鑰**：重新建立一組**新的 API 金鑰**，並妥善保管。未來，請透過我們還原的「輸入框」來貼上新金鑰進行測試。
+
+完成這個安全步驟後，您的應用程式就既安全又能正常運
