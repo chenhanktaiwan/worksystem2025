@@ -239,11 +239,25 @@ document.addEventListener('DOMContentLoaded', () => {
             weatherContainer.innerHTML = `<p style="color: red;">請在程式碼中填入您的 Google API 金鑰。</p>`;
             return;
         }
-        const location = { latitude: 25.0478, longitude: 121.5171 }; // 臺北市
-        const apiUrl = `https://weather.googleapis.com/v1/forecast?location.latitude=${location.latitude}&location.longitude=${location.longitude}&languageCode=zh-TW&params=current_conditions,daily_forecast&key=${GOOGLE_API_KEY}`;
+        
+        const apiUrl = 'https://weather.googleapis.com/v1/forecast:build';
+        const payload = {
+            location: {
+                latitude: 25.0478,
+                longitude: 121.5171
+            },
+            languageCode: 'zh-TW',
+            params: ["currentConditions", "dailyForecasts"],
+            dailyForecastDays: 7
+        };
 
         try {
-            const response = await fetch(apiUrl);
+            const response = await fetch(`${apiUrl}?key=${GOOGLE_API_KEY}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
             if (!response.ok) throw new Error(`Google Weather API 錯誤! 狀態: ${response.status}`);
             const data = await response.json();
             
