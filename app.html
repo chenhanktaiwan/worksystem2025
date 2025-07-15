@@ -11,8 +11,24 @@
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans TC", sans-serif; margin: 0; background-color: #f4f7f9; }
         .app-container { display: flex; height: 100vh; }
 
+        /* 新增：載入中覆蓋層 */
+        #loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #f4f7f9;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.2rem;
+            color: #2c3e50;
+            z-index: 9999;
+        }
+
         /* 側邊導覽列 */
-        .sidebar { width: var(--sidebar-width); background-color: #2c3e50; color: white; display: flex; flex-direction: column; padding: 1.5rem 0; }
+        .sidebar { width: var(--sidebar-width); background-color: #2c3e50; color: white; display: flex; flex-direction: column; padding: 1.5rem 0; transition: all 0.3s ease-in-out; }
         .sidebar-header { text-align: center; padding: 0 1rem; margin-bottom: 2rem; }
         .sidebar-avatar { width: 80px; height: 80px; border-radius: 50%; object-fit: cover; border: 3px solid #34495e; }
         .sidebar-username { margin-top: 0.75rem; font-weight: bold; font-size: 1.1em; }
@@ -25,7 +41,7 @@
         .nav-icon { font-size: 1.2em; }
         
         /* 主要內容區 */
-        .content-area { flex-grow: 1; padding: 2rem; overflow-y: auto; }
+        .content-area { flex-grow: 1; padding: 2rem; overflow-y: auto; transition: all 0.3s ease-in-out; }
         .view { display: none; }
         .view.active { display: block; }
         
@@ -41,8 +57,7 @@
         #message { margin-top: 15px; font-weight: bold; min-height: 1.2em; text-align: center; }
         hr { border: 0; border-top: 1px solid #dee2e6; margin: 20px 0; }
 
-        /* --- 新增的 CSS --- */
-        .sidebar, .content-area { transition: all 0.3s ease-in-out; }
+        /* 側邊欄收合樣式 */
         #sidebar-toggle-btn { background-color: #34495e; width: 100%; margin-bottom: 1rem; }
         .app-container.sidebar-collapsed .sidebar { width: 88px; }
         .app-container.sidebar-collapsed .sidebar-header { padding: 0 0.5rem; }
@@ -52,11 +67,33 @@
         .app-container.sidebar-collapsed .nav-text { display: none; }
         .app-container.sidebar-collapsed #sidebar-toggle-btn::after { content: "展開"; }
         .app-container.sidebar-collapsed #sidebar-toggle-btn { font-size: 0; }
+
+        /* 頁面主標題樣式 */
+        .page-title {
+            font-family: "Microsoft JhengHei", "微軟正黑體", sans-serif;
+            font-size: 20pt;
+            font-weight: bold;
+            text-align: center;
+            color: #2c3e50;
+            margin-top: 0;
+            margin-bottom: 1rem;
+        }
+
+        /* 分隔線樣式 */
+        .title-divider {
+            border: 0;
+            border-top: 1px solid #e0e0e0;
+            margin-bottom: 2rem;
+        }
     </style>
 </head>
 <body>
 
-<div class="app-container">
+<div id="loading-overlay">
+    載入中...
+</div>
+
+<div class="app-container" style="display: none;">
     <aside class="sidebar">
         <div class="sidebar-header">
             <img id="sidebar-avatar-preview" class="sidebar-avatar" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="Avatar">
@@ -77,10 +114,43 @@
     </aside>
 
     <main class="content-area">
-        <div id="home-view" class="view active"><h3>個人首頁</h3><p>這裡是您的個人首頁儀表板...</p></div>
-        <div id="calendar-view" class="view"><h3>行事曆</h3><p>此處將放置行事曆功能。</p></div>
-        <div id="chat-view" class="view"><h3>聊天</h3><p>此處將放置聊天室功能。</p></div>
-        <div id="profile-view" class="view"><div class="form-container"><h3>個人管理後台</h3><div style="text-align:center; margin-bottom: 1.5rem;"><img id="profile-avatar-preview" style="width: 120px; height: 120px; border-radius: 50%; object-fit: cover; cursor: pointer;" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="大頭貼預覽" title="點擊更換大頭貼"><input type="file" id="avatar-uploader" accept="image/png, image/jpeg" style="display: none;"></div><label for="nickname">暱稱</label><input type="text" id="nickname" placeholder="您的暱稱"><label for="bio">個人簡介</label><textarea id="bio" rows="4" placeholder="關於您自己..."></textarea><button id="save-profile-btn">儲存個人資料</button><div id="password-section" style="display: none;"><hr><label for="new-password">變更密碼</label><input type="password" id="new-password" placeholder="輸入新密碼"><button id="update-password-btn">更新密碼</button></div><div id="message"></div></div></div>
+        <div id="home-view" class="view active">
+            <h1 class="page-title">工作站</h1>
+            <hr class="title-divider">
+            <h3>個人首頁</h3>
+            <p>這裡是您的個人首頁儀表板，未來可以放置一些總覽資訊或常用功能的快捷方式。</p>
+        </div>
+        <div id="calendar-view" class="view">
+            <h1 class="page-title">行事曆</h1>
+            <hr class="title-divider">
+            <p>此處將放置行事曆功能。</p>
+        </div>
+        <div id="chat-view" class="view">
+            <h1 class="page-title">聊天</h1>
+            <hr class="title-divider">
+            <p>此處將放置聊天室功能。</p>
+        </div>
+        <div id="profile-view" class="view">
+            <div class="form-container">
+                <h3>個人管理後台</h3>
+                <div style="text-align:center; margin-bottom: 1.5rem;">
+                    <img id="profile-avatar-preview" style="width: 120px; height: 120px; border-radius: 50%; object-fit: cover; cursor: pointer;" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="大頭貼預覽" title="點擊更換大頭貼">
+                    <input type="file" id="avatar-uploader" accept="image/png, image/jpeg" style="display: none;">
+                </div>
+                <label for="nickname">暱稱</label>
+                <input type="text" id="nickname" placeholder="您的暱稱">
+                <label for="bio">個人簡介</label>
+                <textarea id="bio" rows="4" placeholder="關於您自己..."></textarea>
+                <button id="save-profile-btn">儲存個人資料</button>
+                <div id="password-section" style="display: none;">
+                  <hr>
+                  <label for="new-password">變更密碼</label>
+                  <input type="password" id="new-password" placeholder="輸入新密碼">
+                  <button id="update-password-btn">更新密碼</button>
+                </div>
+                <div id="message"></div>
+            </div>
+        </div>
     </main>
 </div>
 
@@ -92,6 +162,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const { createClient } = supabase;
     const _supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+    const loadingOverlay = document.getElementById('loading-overlay');
     const appContainer = document.querySelector('.app-container');
     const sidebarToggleBtn = document.getElementById('sidebar-toggle-btn');
     const sidebarAvatar = document.getElementById('sidebar-avatar-preview');
@@ -111,43 +182,106 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let currentUser = null;
 
-    // --- 功能函式 (與上一版相同) ---
-    const loadUserProfile = (user) => { /* ... */ };
-    const switchView = (viewName) => { /* ... */ };
-    const signOut = async () => { /* ... */ };
-    const updateProfile = async () => { /* ... */ };
-    const uploadAvatar = async (event) => { /* ... */ };
-    const updatePassword = async () => { /* ... */ };
+    // --- 功能函式 ---
+    const loadUserProfile = (user) => {
+        currentUser = user;
+        const nickname = user.user_metadata.nickname || user.email.split('@')[0];
+        const avatarUrl = user.user_metadata.avatar_url || 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMjAiIGhlaWdodD0iMTIwIiB2aWV3Qm94PSIwIDAgMTIwIDEyMCI+CiAgPHJlY3Qgd2lkdGg9IjEyMCIgaGVpZ2h0PSIxMjAiIHN0eWxlPSJmaWxsOiNjZWMwY2U7IiAvPgogIDxwYXRoIGQ9Ik02MCA2MEM3Ni41NjkgNjAgOTAgNDYuNTY5IDkwIDMwQzkwIDEzLjQzMSA3Ni41NjkgMCA2MCAwQzQzLjQzMSAwIDMwIDEzLjQzMSA5MCAzMEMzMCA0Ni41NjkgNDMuNDMxIDYwIDYwIDYwWk02MCA3MEMzNy45MDkgNzEgMjAgODguOTA5IDIwIDExMVYxMjBIMTAwVjExMUMxMDAgODguOTA5IDgyLjA5MSA3MSA2MCA3MVoiIGZpbGw9IiNhYWFiYjAiLz4KPC9zdmc+';
+        
+        sidebarAvatar.src = avatarUrl;
+        sidebarUsername.innerText = nickname;
+        profileAvatar.src = avatarUrl;
+        nicknameInput.value = user.user_metadata.nickname || '';
+        bioTextarea.value = user.user_metadata.bio || '';
 
-    // --- (函式複製) ---
-    const F_loadUserProfile = (user) => { currentUser = user; const nickname = user.user_metadata.nickname || user.email.split('@')[0]; const avatarUrl = user.user_metadata.avatar_url || 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMjAiIGhlaWdodD0iMTIwIiB2aWV3Qm94PSIwIDAgMTIwIDEyMCI+CiAgPHJlY3Qgd2lkdGg9IjEyMCIgaGVpZ2h0PSIxMjAiIHN0eWxlPSJmaWxsOiNjZWMwY2U7IiAvPgogIDxwYXRoIGQ9Ik02MCA2MEM3Ni41NjkgNjAgOTAgNDYuNTY5IDkwIDMwQzkwIDEzLjQzMSA3Ni41NjkgMCA2MCAwQzQzLjQzMSAwIDMwIDEzLjQzMSA5MCAzMEMzMCA0Ni41NjkgNDMuNDMxIDYwIDYwIDYwWk02MCA3MEMzNy45MDkgNzEgMjAgODguOTA5IDIwIDExMVYxMjBIMTAwVjExMUMxMDAgODguOTA5IDgyLjA5MSA3MSA2MCA3MVoiIGZpbGw9IiNhYWFiYjAiLz4KPC9zdmc+'; sidebarAvatar.src = avatarUrl; sidebarUsername.innerText = nickname; profileAvatar.src = avatarUrl; nicknameInput.value = user.user_metadata.nickname || ''; bioTextarea.value = user.user_metadata.bio || ''; if (user.app_metadata.provider !== 'google' && user.app_metadata.providers.includes('email')) { passwordSection.style.display = 'block'; } else { passwordSection.style.display = 'none'; } };
-    const F_switchView = (viewName) => { views.forEach(view => view.classList.remove('active')); navLinks.forEach(link => link.classList.remove('active')); const targetView = document.getElementById(`${viewName}-view`); if (targetView) { targetView.classList.add('active'); } const targetLink = document.querySelector(`.nav-link[data-view="${viewName}"]`); if (targetLink) { targetLink.classList.add('active'); } };
-    const F_signOut = async () => { await _supabase.auth.signOut(); };
-    const F_updateProfile = async () => { messageDiv.innerText = "更新中..."; const { data, error } = await _supabase.auth.updateUser({ data: { nickname: nicknameInput.value.trim(), bio: bioTextarea.value.trim() } }); if (error) { messageDiv.innerText = "更新失敗：" + error.message; } else { messageDiv.innerText = "個人資料已成功儲存！"; F_loadUserProfile(data.user); } };
-    const F_uploadAvatar = async (event) => { const file = event.target.files[0]; if (!file || !currentUser) return; const fileExt = file.name.split('.').pop(); const filePath = `${currentUser.id}/${Date.now()}.${fileExt}`; messageDiv.innerText = "大頭貼上傳中..."; const { error: uploadError } = await _supabase.storage.from('avatars').upload(filePath, file); if (uploadError) { messageDiv.innerText = "上傳失敗：" + uploadError.message; return; } const { data: urlData } = _supabase.storage.from('avatars').getPublicUrl(filePath); const { data, error: updateError } = await _supabase.auth.updateUser({ data: { avatar_url: urlData.publicUrl } }); if (updateError) { messageDiv.innerText = "更新大頭貼失敗：" + updateError.message; } else { messageDiv.innerText = "大頭貼已更新！"; F_loadUserProfile(data.user); } };
-    const F_updatePassword = async () => { const newPassword = newPasswordInput.value; if (!newPassword || newPassword.length < 6) { messageDiv.innerText = '密碼長度至少需要 6 個字元。'; return; } messageDiv.innerText = "更新中..."; const { error } = await _supabase.auth.updateUser({ password: newPassword }); if (error) { messageDiv.innerText = '密碼更新失敗: ' + error.message; } else { messageDiv.innerText = '密碼已成功更新！'; newPasswordInput.value = ''; } };
+        if (user.app_metadata.provider !== 'google' && user.app_metadata.providers.includes('email')) {
+            passwordSection.style.display = 'block';
+        } else {
+            passwordSection.style.display = 'none';
+        }
+    };
+
+    const switchView = (viewName) => {
+        views.forEach(view => view.classList.remove('active'));
+        navLinks.forEach(link => link.classList.remove('active'));
+        const targetView = document.getElementById(`${viewName}-view`);
+        if (targetView) {
+            targetView.classList.add('active');
+        }
+        const targetLink = document.querySelector(`.nav-link[data-view="${viewName}"]`);
+        if (targetLink) {
+            targetLink.classList.add('active');
+        }
+    };
+
+    const signOut = async () => {
+        await _supabase.auth.signOut();
+    };
+    
+    const updateProfile = async () => {
+        messageDiv.innerText = "更新中...";
+        const { data, error } = await _supabase.auth.updateUser({
+            data: { nickname: nicknameInput.value.trim(), bio: bioTextarea.value.trim() }
+        });
+        if (error) { messageDiv.innerText = "更新失敗：" + error.message; }
+        else { messageDiv.innerText = "個人資料已成功儲存！"; loadUserProfile(data.user); }
+    };
+
+    const uploadAvatar = async (event) => {
+        const file = event.target.files[0];
+        if (!file || !currentUser) return;
+        const fileExt = file.name.split('.').pop();
+        const filePath = `${currentUser.id}/${Date.now()}.${fileExt}`;
+        messageDiv.innerText = "大頭貼上傳中...";
+        const { error: uploadError } = await _supabase.storage.from('avatars').upload(filePath, file);
+        if (uploadError) { messageDiv.innerText = "上傳失敗：" + uploadError.message; return; }
+        const { data: urlData } = _supabase.storage.from('avatars').getPublicUrl(filePath);
+        const { data, error: updateError } = await _supabase.auth.updateUser({ data: { avatar_url: urlData.publicUrl } });
+        if (updateError) { messageDiv.innerText = "更新大頭貼失敗：" + updateError.message; }
+        else { messageDiv.innerText = "大頭貼已更新！"; loadUserProfile(data.user); }
+    };
+
+    const updatePassword = async () => {
+        const newPassword = newPasswordInput.value;
+        if (!newPassword || newPassword.length < 6) { messageDiv.innerText = '密碼長度至少需要 6 個字元。'; return; }
+        messageDiv.innerText = "更新中...";
+        const { error } = await _supabase.auth.updateUser({ password: newPassword });
+        if (error) { messageDiv.innerText = '密碼更新失敗: ' + error.message; }
+        else { messageDiv.innerText = '密碼已成功更新！'; newPasswordInput.value = ''; }
+    };
 
     // --- 事件綁定 ---
-    signOutBtn.addEventListener('click', F_signOut);
+    signOutBtn.addEventListener('click', signOut);
     sidebarToggleBtn.addEventListener('click', () => { appContainer.classList.toggle('sidebar-collapsed'); });
-    navLinks.forEach(link => { link.addEventListener('click', (e) => { e.preventDefault(); const viewName = link.getAttribute('data-view'); F_switchView(viewName); }); });
+    navLinks.forEach(link => {
+        link.addEventListener('click', (e) => {
+            e.preventDefault();
+            const viewName = link.getAttribute('data-view');
+            switchView(viewName);
+        });
+    });
     profileAvatar.addEventListener('click', () => avatarUploader.click());
-    avatarUploader.addEventListener('change', F_uploadAvatar);
-    saveProfileBtn.addEventListener('click', F_updateProfile);
-    updatePasswordBtn.addEventListener('click', F_updatePassword);
+    avatarUploader.addEventListener('change', uploadAvatar);
+    saveProfileBtn.addEventListener('click', updateProfile);
+    updatePasswordBtn.addEventListener('click', updatePassword);
 
-    // --- 核心邏輯 ---
+    // --- 核心邏輯 (穩定版) ---
     _supabase.auth.onAuthStateChange((event, session) => {
-        if (session && session.user) {
-            if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'USER_UPDATED') {
-                F_loadUserProfile(session.user);
+        if (event === 'INITIAL_SESSION') {
+            loadingOverlay.style.display = 'none';
+            if (session && session.user) {
+                appContainer.style.display = 'flex';
+                loadUserProfile(session.user);
+                switchView('home');
+            } else {
+                window.location.href = `${window.location.origin}/index.html`;
             }
-        } else {
-            window.location.href = '/index.html';
+        } else if (event === 'SIGNED_OUT') {
+            window.location.href = `${window.location.origin}/index.html`;
+        } else if (event === 'USER_UPDATED' && session && session.user) {
+            loadUserProfile(session.user);
         }
     });
-
-    F_switchView('home');
 });
 </script>
 
