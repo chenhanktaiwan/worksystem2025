@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>我的應用程式</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script async src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBfAUYXPVz9lqN5QPyzcNmeCg5ect9ZNcA&callback=initMap&libraries=places,marker&loading=async"></script>
+    <script async src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBfAUYXPVz9lqN5QPyzcNmeCg5ect9ZNcA&callback=initMap&libraries=places&loading=async"></script>
     <style>
         /* 全局與佈局 */
         :root { --sidebar-width: 240px; }
@@ -61,11 +61,11 @@
         .title-divider { border: 0; border-top: 1px solid #e0e0e0; margin-bottom: 2rem; }
 
         /* 儀表板網格佈局 */
-        .dashboard-grid { display: flex; flex-wrap: wrap; gap: 2rem; align-items: stretch; } /* 修正：使用 stretch 對齊高度 */
-        .dashboard-item { flex: 1; min-width: 300px; display: flex; flex-direction: column; } /* 修正：讓內部元素可以填滿 */
+        .dashboard-grid { display: flex; flex-wrap: wrap; gap: 2rem; align-items: stretch; }
+        .dashboard-item { flex: 1; min-width: 300px; display: flex; flex-direction: column; }
 
         /* 天氣小工具樣式 */
-        .weather-widget { background: #2D9CDB; color: white; border-radius: 8px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); font-family: "Microsoft JhengHei", "微軟正黑體", sans-serif; flex-grow: 1; } /* 修正：增加 flex-grow */
+        .weather-widget { background: #2D9CDB; color: white; border-radius: 8px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); font-family: "Microsoft JhengHei", "微軟正黑體", sans-serif; flex-grow: 1; }
         .weather-today { display: flex; justify-content: space-between; align-items: center; padding-bottom: 15px; border-bottom: 1px solid rgba(255, 255, 255, 0.3); }
         .weather-today-main { display: flex; align-items: center; gap: 15px; }
         .weather-today-icon { font-size: 3.5rem; line-height: 1; }
@@ -98,8 +98,18 @@
         /* 地圖樣式 */
         #map-container { margin-top: 2rem; position: relative; }
         #map { height: 400px; width: 100%; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
-        #pac-container { position: absolute; top: 10px; left: 10px; z-index: 10; }
-        gmp-place-autocomplete { width: 300px; }
+        #pac-input {
+            background-color: #fff;
+            font-size: 15px;
+            font-weight: 300;
+            margin: 10px;
+            padding: 10px;
+            text-overflow: ellipsis;
+            width: 300px;
+            border: 1px solid transparent;
+            border-radius: 4px;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+        }
     </style>
 </head>
 <body>
@@ -151,7 +161,7 @@
                 </div>
             </div>
             <div id="map-container">
-                <div id="pac-container"></div>
+                <input id="pac-input" type="text" placeholder="搜尋地點..." />
                 <div id="map"></div>
             </div>
         </div>
@@ -163,12 +173,13 @@
 </div>
 
 <script>
+    // 修正：將地圖初始化函式設為全域函式
     async function initMap() {
         const taipeiMainStation = { lat: 25.0479, lng: 121.5171 };
+        
         const { Map } = await google.maps.importLibrary("maps");
         const { AdvancedMarkerElement } = await google.maps.importLibrary("marker");
-        const { PlaceAutocompleteElement } = await google.maps.importLibrary("places");
-
+        
         const map = new Map(document.getElementById("map"), {
             zoom: 14,
             center: taipeiMainStation,
@@ -181,28 +192,26 @@
             title: '臺北車站'
         });
 
-        const pacContainer = document.getElementById("pac-container");
-        const autocomplete = new PlaceAutocompleteElement({
-            placeholder: "搜尋地點..."
-        });
-        pacContainer.appendChild(autocomplete);
-        map.controls[google.maps.ControlPosition.TOP_LEFT].push(pacContainer);
+        const input = document.getElementById("pac-input");
+        const autocomplete = new google.maps.places.Autocomplete(input);
+        autocomplete.bindTo("bounds", map);
+        map.controls[google.maps.ControlPosition.TOP_LEFT].push(input);
 
-        autocomplete.addEventListener("gmp-placechange", async () => {
-            const place = await autocomplete.getPlace();
+        autocomplete.addListener("place_changed", () => {
+            const place = autocomplete.getPlace();
             if (!place.geometry || !place.geometry.location) {
-                console.log("找不到地點 '" + (place.displayName || "") + "' 的詳細資訊");
+                window.alert("找不到地點 '" + place.name + "' 的詳細資訊");
                 return;
             }
 
-            if (place.viewport) {
-                map.fitBounds(place.viewport);
+            if (place.geometry.viewport) {
+                map.fitBounds(place.geometry.viewport);
             } else {
                 map.setCenter(place.geometry.location);
                 map.setZoom(17);
             }
             marker.position = place.geometry.location;
-            marker.title = place.displayName;
+            marker.title = place.name;
         });
     }
     window.initMap = initMap;
@@ -289,7 +298,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 weatherElements[elem.elementName] = elem.time;
             });
 
-            // --- 建立今日天氣 HTML ---
             const todayWx = weatherElements.Wx[0].parameter.parameterName;
             const todayPop = weatherElements.PoP[0].parameter.parameterName;
             const todayMaxT = weatherElements.MaxT[0].parameter.parameterName;
@@ -312,11 +320,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
             `;
 
-            // --- 建立未來預報 HTML (修正版) ---
             let forecastHtml = '<div class="weather-forecast">';
             const dailyData = {};
 
-            // 1. 重新組織資料，以日期為 key
             for (let i = 0; i < weatherElements.Wx.length; i++) {
                 const startTime = weatherElements.Wx[i].startTime;
                 if (!startTime) continue;
@@ -330,7 +336,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 dailyData[date].maxT.push(weatherElements.MaxT[i].parameter.parameterName);
             }
             
-            // 2. 產生 HTML，顯示未來七天
             const dates = Object.keys(dailyData).sort();
             let count = 0;
             for (const dateKey of dates) {
