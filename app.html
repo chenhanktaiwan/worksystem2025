@@ -12,20 +12,7 @@
         .app-container { display: flex; height: 100vh; }
 
         /* 新增：載入中覆蓋層 */
-        #loading-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: #f4f7f9;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-size: 1.2rem;
-            color: #2c3e50;
-            z-index: 9999;
-        }
+        #loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: #f4f7f9; display: flex; justify-content: center; align-items: center; font-size: 1.2rem; color: #2c3e50; z-index: 9999; }
 
         /* 側邊導覽列 */
         .sidebar { width: var(--sidebar-width); background-color: #2c3e50; color: white; display: flex; flex-direction: column; padding: 1.5rem 0; transition: all 0.3s ease-in-out; }
@@ -69,36 +56,32 @@
         .app-container.sidebar-collapsed #sidebar-toggle-btn { font-size: 0; }
 
         /* 頁面主標題樣式 */
-        .page-title {
-            font-family: "Microsoft JhengHei", "微軟正黑體", sans-serif;
-            font-size: 20pt;
-            font-weight: bold;
-            text-align: center;
-            color: #2c3e50;
-            margin-top: 0;
-            margin-bottom: 1rem;
-        }
+        .page-title { font-family: "Microsoft JhengHei", "微軟正黑體", sans-serif; font-size: 20pt; font-weight: bold; text-align: center; color: #2c3e50; margin-top: 0; margin-bottom: 1rem; }
+        .title-divider { border: 0; border-top: 1px solid #e0e0e0; margin-bottom: 2rem; }
 
-        /* 分隔線樣式 */
-        .title-divider {
-            border: 0;
-            border-top: 1px solid #e0e0e0;
-            margin-bottom: 2rem;
-        }
+        /* 天氣小工具樣式 */
+        .weather-widget { background: linear-gradient(to right, #4facfe, #00f2fe); color: white; border-radius: 15px; padding: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); margin-bottom: 2rem; }
+        .weather-today { display: flex; justify-content: space-between; align-items: center; padding-bottom: 20px; border-bottom: 1px solid rgba(255, 255, 255, 0.3); }
+        .weather-today-main { display: flex; align-items: center; gap: 20px; }
+        .weather-today-icon { font-size: 4rem; }
+        .weather-today-details .condition { font-size: 1.5rem; font-weight: bold; }
+        .weather-today-details .humidity { font-size: 0.9rem; opacity: 0.8; }
+        .weather-today-temp { font-size: 4rem; font-weight: 300; }
+        .weather-today-location { font-size: 1.2rem; font-weight: bold; text-align: right; }
+        .weather-forecast { display: flex; justify-content: space-around; padding-top: 20px; }
+        .forecast-day { text-align: center; }
+        .forecast-day .date { font-size: 0.9rem; font-weight: bold; }
+        .forecast-day .icon { font-size: 2.5rem; margin: 10px 0; }
+        .forecast-day .temp { font-size: 1.1rem; font-weight: bold; }
     </style>
 </head>
 <body>
 
-<div id="loading-overlay">
-    載入中...
-</div>
+<div id="loading-overlay">載入中...</div>
 
 <div class="app-container" style="display: none;">
     <aside class="sidebar">
-        <div class="sidebar-header">
-            <img id="sidebar-avatar-preview" class="sidebar-avatar" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="Avatar">
-            <h4 id="sidebar-username-preview" class="sidebar-username">使用者</h4>
-        </div>
+        <div class="sidebar-header"><img id="sidebar-avatar-preview" class="sidebar-avatar" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="Avatar"><h4 id="sidebar-username-preview" class="sidebar-username">使用者</h4></div>
         <nav class="sidebar-nav">
             <ul>
                 <li><a href="#" class="nav-link active" data-view="home"><span class="nav-icon">🏠</span> <span class="nav-text">個人首頁</span></a></li>
@@ -117,40 +100,13 @@
         <div id="home-view" class="view active">
             <h1 class="page-title">工作站</h1>
             <hr class="title-divider">
+            <div id="weather-forecast-container"><p>正在載入天氣資訊...</p></div>
             <h3>個人首頁</h3>
             <p>這裡是您的個人首頁儀表板，未來可以放置一些總覽資訊或常用功能的快捷方式。</p>
         </div>
-        <div id="calendar-view" class="view">
-            <h1 class="page-title">行事曆</h1>
-            <hr class="title-divider">
-            <p>此處將放置行事曆功能。</p>
-        </div>
-        <div id="chat-view" class="view">
-            <h1 class="page-title">聊天</h1>
-            <hr class="title-divider">
-            <p>此處將放置聊天室功能。</p>
-        </div>
-        <div id="profile-view" class="view">
-            <div class="form-container">
-                <h3>個人管理後台</h3>
-                <div style="text-align:center; margin-bottom: 1.5rem;">
-                    <img id="profile-avatar-preview" style="width: 120px; height: 120px; border-radius: 50%; object-fit: cover; cursor: pointer;" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="大頭貼預覽" title="點擊更換大頭貼">
-                    <input type="file" id="avatar-uploader" accept="image/png, image/jpeg" style="display: none;">
-                </div>
-                <label for="nickname">暱稱</label>
-                <input type="text" id="nickname" placeholder="您的暱稱">
-                <label for="bio">個人簡介</label>
-                <textarea id="bio" rows="4" placeholder="關於您自己..."></textarea>
-                <button id="save-profile-btn">儲存個人資料</button>
-                <div id="password-section" style="display: none;">
-                  <hr>
-                  <label for="new-password">變更密碼</label>
-                  <input type="password" id="new-password" placeholder="輸入新密碼">
-                  <button id="update-password-btn">更新密碼</button>
-                </div>
-                <div id="message"></div>
-            </div>
-        </div>
+        <div id="calendar-view" class="view"><h1 class="page-title">行事曆</h1><hr class="title-divider"><p>此處將放置行事曆功能。</p></div>
+        <div id="chat-view" class="view"><h1 class="page-title">聊天</h1><hr class="title-divider"><p>此處將放置聊天室功能。</p></div>
+        <div id="profile-view" class="view"><div class="form-container"><h3>個人管理後台</h3><div style="text-align:center; margin-bottom: 1.5rem;"><img id="profile-avatar-preview" style="width: 120px; height: 120px; border-radius: 50%; object-fit: cover; cursor: pointer;" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="大頭貼預覽" title="點擊更換大頭貼"><input type="file" id="avatar-uploader" accept="image/png, image/jpeg" style="display: none;"></div><label for="nickname">暱稱</label><input type="text" id="nickname" placeholder="您的暱稱"><label for="bio">個人簡介</label><textarea id="bio" rows="4" placeholder="關於您自己..."></textarea><button id="save-profile-btn">儲存個人資料</button><div id="password-section" style="display: none;"><hr><label for="new-password">變更密碼</label><input type="password" id="new-password" placeholder="輸入新密碼"><button id="update-password-btn">更新密碼</button></div><div id="message"></div></div></div>
     </main>
 </div>
 
@@ -179,6 +135,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const passwordSection = document.getElementById('password-section');
     const newPasswordInput = document.getElementById('new-password');
     const updatePasswordBtn = document.getElementById('update-password-btn');
+    const weatherContainer = document.getElementById('weather-forecast-container');
 
     let currentUser = null;
 
@@ -250,6 +207,33 @@ document.addEventListener('DOMContentLoaded', () => {
         else { messageDiv.innerText = '密碼已成功更新！'; newPasswordInput.value = ''; }
     };
 
+    const getWeatherIcon = (code) => {
+        if (code === 0) return '☀️'; if (code >= 1 && code <= 3) return '☁️'; if (code >= 51 && code <= 67) return '🌧️'; if (code >= 71 && code <= 77) return '❄️'; if (code >= 95 && code <= 99) return '⛈️'; return '❓';
+    };
+    const getWeatherDescription = (code) => {
+        if (code === 0) return '晴天'; if (code === 1) return '大致晴朗'; if (code === 2) return '部分多雲'; if (code === 3) return '多雲'; if (code >= 51 && code <= 55) return '毛毛雨'; if (code >= 61 && code <= 65) return '陣雨'; if (code >= 80 && code <= 82) return '大雷雨'; return '未知';
+    };
+    const fetchWeatherForecast = async () => {
+        try {
+            const lat = 25.0478, lon = 121.5318;
+            const apiUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min&timezone=Asia%2FSingapore`;
+            const response = await fetch(apiUrl);
+            if (!response.ok) throw new Error('無法取得天氣資料');
+            const data = await response.json();
+            const today = data.current;
+            const todayHtml = `<div class="weather-today"><div class="weather-today-main"><div class="weather-today-icon">${getWeatherIcon(today.weather_code)}</div><div class="weather-today-details"><div class="condition">${getWeatherDescription(today.weather_code)}</div><div class="humidity">濕度：${today.relative_humidity_2m}%</div></div></div><div><div class="weather-today-temp">${Math.round(today.temperature_2m)}°</div><div class="weather-today-location">臺北市</div></div></div>`;
+            let forecastHtml = '<div class="weather-forecast">';
+            for (let i = 1; i < 7; i++) {
+                const date = new Date(data.daily.time[i]);
+                forecastHtml += `<div class="forecast-day"><div class="date">${date.getMonth() + 1}/${date.getDate()}</div><div class="icon">${getWeatherIcon(data.daily.weather_code[i])}</div><div class="temp">${Math.round(data.daily.temperature_2m_max[i])}°</div></div>`;
+            }
+            forecastHtml += '</div>';
+            weatherContainer.innerHTML = `<div class="weather-widget">${todayHtml}${forecastHtml}</div>`;
+        } catch (error) {
+            weatherContainer.innerHTML = `<p style="color: red;">天氣資訊載入失敗: ${error.message}</p>`;
+        }
+    };
+
     // --- 事件綁定 ---
     signOutBtn.addEventListener('click', signOut);
     sidebarToggleBtn.addEventListener('click', () => { appContainer.classList.toggle('sidebar-collapsed'); });
@@ -273,6 +257,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 appContainer.style.display = 'flex';
                 loadUserProfile(session.user);
                 switchView('home');
+                fetchWeatherForecast();
             } else {
                 window.location.href = `${window.location.origin}/index.html`;
             }
@@ -280,6 +265,112 @@ document.addEventListener('DOMContentLoaded', () => {
             window.location.href = `${window.location.origin}/index.html`;
         } else if (event === 'USER_UPDATED' && session && session.user) {
             loadUserProfile(session.user);
+        }
+    });
+});
+</script>
+
+</body>
+</html>
+```
+
+```html
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>內部共用平台 - 登入</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans TC", sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; background-color: #f8f9fa; margin: 0; }
+        .container { background: white; padding: 2.5rem; border-radius: 8px; box-shadow: 0 8px 30px rgba(0,0,0,0.1); text-align: center; width: 380px; box-sizing: border-box; }
+        h2 { color: #343a40; margin-top: 0; margin-bottom: 1.5rem; }
+        a { color: #007bff; text-decoration: none; font-size: 0.9em; }
+        a:hover { text-decoration: underline; }
+        input { width: 100%; padding: 12px; margin-bottom: 12px; border: 1px solid #ced4da; border-radius: 4px; box-sizing: border-box; font-size: 1em; }
+        button { width: 100%; padding: 12px; margin-bottom: 10px; border: none; border-radius: 4px; color: white; font-weight: bold; cursor: pointer; font-size: 1em; transition: opacity 0.2s; }
+        button:hover { opacity: 0.85; }
+        #signup-btn { background-color: #28a745; }
+        #signin-btn { background-color: #007bff; }
+        #google-btn { background-color: #db4437; }
+        hr { border: 0; border-top: 1px solid #dee2e6; margin: 20px 0; }
+        #message { margin-top: 15px; color: #dc3545; font-weight: bold; min-height: 1.2em;}
+    </style>
+</head>
+<body>
+
+<div class="container" style="display: none;">
+    <div id="auth-view">
+        <h2>內部平台登入</h2>
+        <input type="email" id="email" placeholder="電子郵件" required />
+        <input type="password" id="password" placeholder="密碼" required />
+        <button id="signin-btn">用密碼登入</button>
+        <a href="#" id="forgot-password-link" style="display: block; margin-top: 10px;">忘記密碼？</a>
+        <hr>
+        <button id="signup-btn">註冊新帳號</button>
+        <button id="google-btn">用 Google 帳號登入</button>
+    </div>
+    <div id="message"></div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    // --- 1. 初始化設定 ---
+    const SUPABASE_URL = 'https://wvdfuqvebqolvpwhdelg.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind2ZGZ1cXZlYnFvbHZwd2hkZWxnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTIyMzA0MjksImV4cCI6MjA2NzgwNjQyOX0.0VAgxyaoyeFeNbto9pUchwqQVqvHzCzyC22wXb01OKU';
+    const { createClient } = supabase;
+    const _supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    // --- 2. 取得頁面元素 ---
+    const container = document.querySelector('.container');
+    const emailInput = document.getElementById('email');
+    const passwordInput = document.getElementById('password');
+    const messageDiv = document.getElementById('message');
+
+    // --- 3. 認證功能函式 ---
+    const signUp = async () => {
+        messageDiv.innerText = "處理中...";
+        const { error } = await _supabase.auth.signUp({ email: emailInput.value, password: passwordInput.value });
+        if (error) { messageDiv.innerText = '註冊失敗: ' + error.message; }
+        else { messageDiv.innerText = ""; alert('註冊成功！請檢查您的信箱以完成驗證。'); }
+    };
+    const signInWithPassword = async () => {
+        messageDiv.innerText = "登入中...";
+        const { error } = await _supabase.auth.signInWithPassword({ email: emailInput.value, password: passwordInput.value });
+        if (error) { messageDiv.innerText = '登入失敗: ' + error.message; }
+    };
+    const signInWithGoogle = async () => {
+        messageDiv.innerText = "";
+        await _supabase.auth.signInWithOAuth({ provider: 'google' });
+    };
+    const forgotPassword = async () => {
+        const email = prompt("請輸入您註冊的電子郵件地址：");
+        if (!email) return; 
+        const resetUrl = `${window.location.origin}/reset.html`;
+        messageDiv.innerText = "正在發送密碼重設郵件...";
+        const { error } = await _supabase.auth.resetPasswordForEmail(email, { redirectTo: resetUrl });
+        if (error) { messageDiv.innerText = "錯誤：" + error.message; }
+        else { messageDiv.innerText = ""; alert("密碼重設郵件已成功寄出，請檢查您的信箱。"); }
+    };
+    
+    // --- 4. 事件綁定 ---
+    document.getElementById('signin-btn').addEventListener('click', signInWithPassword);
+    document.getElementById('signup-btn').addEventListener('click', signUp);
+    document.getElementById('google-btn').addEventListener('click', signInWithGoogle);
+    document.getElementById('forgot-password-link').addEventListener('click', forgotPassword);
+
+    // --- 5. 核心：監聽認證狀態變化 (穩定版) ---
+    _supabase.auth.onAuthStateChange((event, session) => {
+        if (event === 'INITIAL_SESSION') {
+            if (session) {
+                window.location.href = `${window.location.origin}/app.html`;
+            } else {
+                // 只有在確認未登入後，才顯示登入表單
+                container.style.display = 'block';
+            }
+        } else if (event === 'SIGNED_IN') {
+             window.location.href = `${window.location.origin}/app.html`;
         }
     });
 });
