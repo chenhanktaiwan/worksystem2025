@@ -321,7 +321,119 @@ document.addEventListener('DOMContentLoaded', () => {
     const fetchUsers = async () => { const { data: users, error } = await _supabase.from('profiles').select('email, role'); if (error) { console.error('取得使用者列表失敗:', error); userListUl.innerHTML = '<li>無法載入列表</li>'; return; } userListUl.innerHTML = ''; users.forEach(user => { const li = document.createElement('li'); li.innerHTML = `<span class="user-email">${user.email}</span> <span class="user-role">${user.role}</span>`; userListUl.appendChild(li); }); };
     const addUser = async (event) => { event.preventDefault(); const email = newUserEmailInput.value.trim(); if (!email) return; adminMessageDiv.innerText = '處理中...'; const { error } = await _supabase.from('profiles').insert({ email: email, role: 'member' }); if (error) { adminMessageDiv.innerText = `新增失敗: ${error.message}`; } else { adminMessageDiv.innerText = `已成功授權 ${email}！請該使用者用此 Email 註冊/登入。`; newUserEmailInput.value = ''; fetchUsers(); } };
     const getCwaWeatherIcon = (wxValue) => { const value = parseInt(wxValue, 10); if (value === 1) return '☀️'; if (value >= 2 && value <= 3) return '🌤️'; if (value >= 4 && value <= 7) return '☁️'; if (value >= 8 && value <= 22) return '🌧️'; if (value >= 23 && value <= 28) return '🌫️'; if (value >= 29 && value <= 39) return '⛈️'; if (value >= 41 && value <= 42) return '❄️'; return '❓'; };
-    const fetchWeatherForecast = async () => { if (!CWA_API_KEY) { weatherContainer.innerHTML = `<p style="color: red;">請在程式碼中填入您的氣象署 API 授權碼。</p>`; return; } const locationName = "臺北市"; const dataId = "F-C0032-001"; const apiUrl = `https://opendata.cwa.gov.tw/api/v1/rest/datastore/${dataId}?Authorization=${CWA_API_KEY}&locationName=${encodeURIComponent(locationName)}&elementName=Wx,PoP,MinT,MaxT`; try { const response = await fetch(apiUrl); if (!response.ok) throw new Error(`HTTP 錯誤! 狀態: ${response.status}`); const data = await response.json(); if (!data.success || !data.records.location[0]) { throw new Error('API 回應格式不正確或無資料'); } const locationData = data.records.location[0]; const weatherElements = {}; locationData.weatherElement.forEach(elem => { weatherElements[elem.elementName] = elem.time; }); const todayWx = weatherElements.Wx[0].parameter.parameterName; const todayPop = weatherElements.PoP[0].parameter.parameterName; const todayMaxT = weatherElements.MaxT[0].parameter.parameterName; const todayMinT = weatherElements.MinT[0].parameter.parameterName; const todayWxValue = weatherElements.Wx[0].parameter.parameterValue; const todayHtml = `<div class="weather-today"><div class="weather-today-main"><div class="weather-today-icon">${getCwaWeatherIcon(todayWxValue)}</div><div class="weather-today-details"><div class="condition">${todayWx}</div><div class="pop">降雨機率：${todayPop}%</div></div></div><div style="text-align: right;"><div class="weather-today-temp">${todayMinT}° / ${todayMaxT}°</div><div class="weather-today-location">${locationName}</div></div></div>`; let forecastHtml = '<div class="weather-forecast">'; const dailyData = {}; for (let i = 0; i < weatherElements.Wx.length; i++) { const startTime = weatherElements.Wx[i].startTime; if (!startTime) continue; const date = new Date(startTime).toLocaleDateString('en-CA'); if (!dailyData[date]) { dailyData[date] = { wx: [], pop: [], minT: [], maxT: [] }; } dailyData[date].wx.push(weatherElements.Wx[i].parameter); dailyData[date].pop.push(weatherElements.PoP[i].parameter.parameterName); dailyData[date].minT.push(weatherElements.MinT[i].parameter.parameterName); dailyData[date].maxT.push(weatherElements.MaxT[i].parameter.parameterName); } const dates = Object.keys(dailyData).sort(); let count = 0; for (const dateKey of dates) { if (count >= 7) break; const forecast = dailyData[dateKey]; if (!forecast.wx[0] || !forecast.maxT[0] || !forecast.minT[0] || !forecast.pop[0]) continue; const date = new Date(dateKey); const day = `${date.getMonth() + 1}/${date.getDate()}`; const dayWx = forecast.wx[0]; const icon = getCwaWeatherIcon(dayWx.parameterValue); const maxT = Math.max(...forecast.maxT.map(t => parseInt(t))); const minT = Math.min(...forecast.minT.map(t => parseInt(t))); const pop = Math.max(...forecast.pop.map(p => parseInt(p))); forecastHtml += `<div class="forecast-day"><div class="date">${day}</div><div class="icon">${icon}</div><div class="temp">${minT}°/${maxT}°</div><div class="pop">💧 ${pop}%</div></div>`; count++; } forecastHtml += '</div>'; weatherContainer.innerHTML = `<div class="weather-widget">${todayHtml}${forecastHtml}</div>`; } catch (error) { weatherContainer.innerHTML = `<p style="color: red; text-align: center;">天氣資訊載入失敗: ${error.message}</p>`; console.error(error); } };
+    
+    // -- NEW fetchWeatherForecast Function --
+    const fetchWeatherForecast = async () => {
+        if (!CWA_API_KEY) {
+            weatherContainer.innerHTML = `<p style="color: red;">請在程式碼中填入您的氣象署 API 授權碼。</p>`;
+            return;
+        }
+
+        const district = '新莊區';
+        const city = '新北市';
+        const dataId = 'F-D0047-091'; // 鄉鎮市區未來1週預報
+        const apiUrl = `https://opendata.cwa.gov.tw/api/v1/rest/datastore/${dataId}?Authorization=${CWA_API_KEY}&locationName=${encodeURIComponent(city)}&elementName=Wx,PoP12h,T`;
+
+        try {
+            const response = await fetch(apiUrl);
+            if (!response.ok) throw new Error(`HTTP 錯誤! 狀態: ${response.status}`);
+            const data = await response.json();
+
+            if (!data.success || !data.records || !data.records.locations[0]) {
+                throw new Error('API 回應格式不正確或無資料');
+            }
+            
+            const locationData = data.records.locations[0].location.find(l => l.locationName === district);
+            if (!locationData) {
+                throw new Error(`在 API 回應中找不到 ${district} 的預報資料`);
+            }
+
+            const weatherElements = {};
+            locationData.weatherElement.forEach(elem => {
+                weatherElements[elem.elementName] = elem.time;
+            });
+
+            // 將 PoP (降雨機率), Wx (天氣現象), T (溫度) 的資料依日期分組
+            const dailyData = {};
+            weatherElements.T.forEach(time => {
+                const date = time.dataTime.split(' ')[0];
+                if (!dailyData[date]) {
+                    dailyData[date] = { temps: [], wx: [], wxValue: [], pop: [] };
+                }
+                dailyData[date].temps.push(parseInt(time.elementValue[0].value, 10));
+            });
+
+            weatherElements.Wx.forEach(time => {
+                const date = time.startTime.split(' ')[0];
+                if (dailyData[date]) {
+                    dailyData[date].wx.push(time.elementValue[0].value);
+                    dailyData[date].wxValue.push(time.elementValue[1].value);
+                }
+            });
+
+            weatherElements.PoP12h.forEach(time => {
+                const date = time.startTime.split(' ')[0];
+                if (dailyData[date]) {
+                    dailyData[date].pop.push(parseInt(time.elementValue[0].value, 10));
+                }
+            });
+            
+            const dates = Object.keys(dailyData).sort();
+
+            // 產生今日天氣資訊 HTML
+            const todayDate = dates[0];
+            const today = dailyData[todayDate];
+            const todayWx = today.wx[0] || 'N/A';
+            const todayWxValue = today.wxValue[0] || '';
+            const todayPop = today.pop.length > 0 ? Math.max(...today.pop) : 0;
+            const todayMaxT = today.temps.length > 0 ? Math.max(...today.temps) : 'N/A';
+            const todayMinT = today.temps.length > 0 ? Math.min(...today.temps) : 'N/A';
+
+            const todayHtml = `
+                <div class="weather-today">
+                    <div class="weather-today-main">
+                        <div class="weather-today-icon">${getCwaWeatherIcon(todayWxValue)}</div>
+                        <div class="weather-today-details">
+                            <div class="condition">${todayWx}</div>
+                            <div class="pop">降雨機率：${todayPop}%</div>
+                        </div>
+                    </div>
+                    <div style="text-align: right;">
+                        <div class="weather-today-temp">${todayMinT}° / ${todayMaxT}°</div>
+                        <div class="weather-today-location">${district}</div>
+                    </div>
+                </div>`;
+            
+            // 產生未來一週預報 HTML
+            let forecastHtml = '<div class="weather-forecast">';
+            dates.forEach(dateKey => {
+                const forecast = dailyData[dateKey];
+                if (!forecast || forecast.temps.length === 0) return;
+
+                const date = new Date(dateKey);
+                const day = `${date.getMonth() + 1}/${date.getDate()}`;
+                const icon = getCwaWeatherIcon(forecast.wxValue[0]); // 使用白天的天氣圖示
+                const maxT = Math.max(...forecast.temps);
+                const minT = Math.min(...forecast.temps);
+                const pop = forecast.pop.length > 0 ? Math.max(...forecast.pop) : 0;
+
+                forecastHtml += `
+                    <div class="forecast-day">
+                        <div class="date">${day}</div>
+                        <div class="icon">${icon}</div>
+                        <div class="temp">${minT}°/${maxT}°</div>
+                        <div class="pop">💧 ${pop}%</div>
+                    </div>`;
+            });
+            forecastHtml += '</div>';
+
+            weatherContainer.innerHTML = `<div class="weather-widget">${todayHtml}${forecastHtml}</div>`;
+
+        } catch (error) {
+            weatherContainer.innerHTML = `<p style="color: red; text-align: center;">天氣資訊載入失敗: ${error.message}</p>`;
+            console.error("天氣資訊載入失敗:", error);
+        }
+    };
 
     // --- 事件綁定 ---
     signOutBtn.addEventListener('click', signOut);
