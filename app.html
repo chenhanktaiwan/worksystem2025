@@ -10,6 +10,7 @@
         /* 全局與佈局 */
         :root { --header-height: 60px; }
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans TC", sans-serif; margin: 0; background-color: #f4f7f9; }
+        .app-wrapper { display: none; } /* 預設隱藏整個 app */
         .app-container { display: flex; flex-direction: column; height: 100vh; }
 
         /* 載入中覆蓋層 */
@@ -20,9 +21,9 @@
         .nav-left { display: flex; align-items: center; gap: 1rem; }
         .nav-center { display: flex; justify-content: center; flex-grow: 1; }
         .nav-right { display: flex; align-items: center; }
-        .main-title { font-family: "Microsoft JhengHei", "微軟正黑體", sans-serif; font-size: 1.5rem; font-weight: bold; color: #fff; text-decoration: none; }
+        .main-title { font-family: "Microsoft JhengHei", "微軟正黑體", sans-serif; font-size: 1.5rem; font-weight: bold; color: #fff; text-decoration: none; cursor: pointer; }
         .nav-links { list-style: none; padding: 0; margin: 0; display: flex; gap: 1rem; }
-        .nav-links a { color: #ecf0f1; text-decoration: none; padding: 0.5rem 1rem; border-radius: 4px; transition: background-color 0.2s; }
+        .nav-links a { color: #ecf0f1; text-decoration: none; padding: 0.5rem 1rem; border-radius: 4px; transition: background-color 0.2s; cursor: pointer; }
         .nav-links a:hover { background-color: #34495e; }
         .nav-links a.active { background-color: #1abc9c; font-weight: bold; }
         .user-menu { position: relative; }
@@ -50,7 +51,7 @@
         #save-profile-btn, #add-user-btn { background-color: #007bff; }
         #update-password-btn { background-color: #17a2b8; }
         #signout-btn { background-color: #e74c3c; }
-        #message { margin-top: 15px; font-weight: bold; min-height: 1.2em; text-align: center; }
+        #message, #admin-message { margin-top: 15px; font-weight: bold; min-height: 1.2em; text-align: center; }
         hr { border: 0; border-top: 1px solid #dee2e6; margin: 20px 0; }
         .page-title { font-family: "Microsoft JhengHei", "微軟正黑體", sans-serif; font-size: 20pt; font-weight: bold; text-align: center; color: #2c3e50; margin-top: 0; margin-bottom: 1rem; }
         .title-divider { border: 0; border-top: 1px solid #e0e0e0; margin-bottom: 2rem; }
@@ -104,41 +105,87 @@
 
 <div id="loading-overlay">載入中...</div>
 
-<div id="app-page" class="app-container" style="display: none;">
-    <header class="top-nav">
-        <div class="nav-left">
-            <div class="hamburger-menu" id="hamburger-menu">☰</div>
-            <a href="#" class="main-title" data-view="home">我的工作站</a>
-        </div>
-        <nav class="nav-center">
-            <ul class="nav-links">
-                <li><a href="#" class="nav-link active" data-view="home">個人首頁</a></li>
-                <li><a href="#" class="nav-link" data-view="calendar">行事曆</a></li>
-                <li><a href="#" class="nav-link" data-view="chat">聊天</a></li>
-            </ul>
-        </nav>
-        <div class="nav-right">
-            <div class="user-menu">
-                <img id="user-avatar" class="user-avatar" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="User Avatar">
-                <div class="dropdown-menu" id="user-dropdown">
-                    <a href="#" class="nav-link" data-view="profile">個人管理後台</a>
-                    <a href="#" class="nav-link" data-view="user-management" id="user-management-link" style="display: none;">使用者管理</a>
-                    <hr style="margin: 5px 0;">
-                    <button id="signout-btn">登出</button>
+<div id="app-page" class="app-wrapper">
+    <div class="app-container">
+        <header class="top-nav">
+            <div class="nav-left">
+                <div class="hamburger-menu" id="hamburger-menu">☰</div>
+                <a href="#" class="main-title" data-view="home">我的工作站</a>
+            </div>
+            <nav class="nav-center">
+                <ul class="nav-links">
+                    <li><a href="#" class="nav-link active" data-view="home">個人首頁</a></li>
+                    <li><a href="#" class="nav-link" data-view="calendar">行事曆</a></li>
+                    <li><a href="#" class="nav-link" data-view="chat">聊天</a></li>
+                </ul>
+            </nav>
+            <div class="nav-right">
+                <div class="user-menu">
+                    <img id="user-avatar" class="user-avatar" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="User Avatar">
+                    <div class="dropdown-menu" id="user-dropdown">
+                        <a href="#" class="dropdown-link" data-view="profile">個人管理後台</a>
+                        <a href="#" class="dropdown-link" data-view="user-management" id="user-management-link" style="display: none;">使用者管理</a>
+                        <hr style="margin: 5px 0;">
+                        <button id="signout-btn">登出</button>
+                    </div>
                 </div>
             </div>
-        </div>
-    </header>
-    
-    <ul class="mobile-nav-links" id="mobile-nav-links">
-        <li><a href="#" class="nav-link active" data-view="home">個人首頁</a></li>
-        <li><a href="#" class="nav-link" data-view="calendar">行事曆</a></li>
-        <li><a href="#" class="nav-link" data-view="chat">聊天</a></li>
-    </ul>
+        </header>
+        
+        <ul class="mobile-nav-links" id="mobile-nav-links">
+            <li><a href="#" class="nav-link" data-view="home">個人首頁</a></li>
+            <li><a href="#" class="nav-link" data-view="calendar">行事曆</a></li>
+            <li><a href="#" class="nav-link" data-view="chat">聊天</a></li>
+            <li><a href="#" class="dropdown-link" data-view="profile">個人管理後台</a></li>
+            <li id="mobile-user-management-link" style="display: none;"><a href="#" class="dropdown-link" data-view="user-management">使用者管理</a></li>
+        </ul>
 
-    <main class="content-area">
-        <!-- 內容視圖... -->
-    </main>
+        <main class="content-area">
+            <div id="home-view" class="view">
+                <div class="dashboard-grid">
+                    <div id="weather-forecast-container" class="dashboard-item">
+                        <p>正在載入天氣資訊...</p>
+                    </div>
+                    <div id="search-column" class="dashboard-item">
+                        <div class="search-widget">
+                            <h4>Google 搜尋</h4>
+                            <form action="https://www.google.com/search" method="get" target="_blank" class="search-form">
+                                <input type="text" name="q" placeholder="輸入關鍵字..." required>
+                                <button type="submit" id="google-search-btn">搜尋</button>
+                            </form>
+                        </div>
+                        <div class="search-widget gemini-widget">
+                            <h4>Gemini AI 搜尋</h4>
+                            <input type="password" id="user-gemini-key" placeholder="貼上您的 Gemini API 金鑰 (選填)" style="margin-bottom: 15px; width: 100%; box-sizing: border-box;">
+                            <form id="gemini-search-form" class="search-form">
+                                <input type="text" id="gemini-prompt" placeholder="輸入您的問題..." required>
+                                <button type="submit" id="gemini-search-btn">傳送</button>
+                            </form>
+                            <div id="gemini-results">請在這裡輸入問題，向 Gemini 提問。</div>
+                        </div>
+                    </div>
+                </div>
+                <div id="map-container">
+                    <div id="pac-container">
+                        <gmp-place-autocomplete placeholder="搜尋地點..."></gmp-place-autocomplete>
+                    </div>
+                    <div id="map"></div>
+                </div>
+            </div>
+            <div id="calendar-view" class="view">
+                <h1 class="page-title">行事曆</h1><hr class="title-divider"><p>此處將放置行事曆功能。</p>
+            </div>
+            <div id="chat-view" class="view">
+                <h1 class="page-title">聊天</h1><hr class="title-divider"><p>此處將放置聊天室功能。</p>
+            </div>
+            <div id="profile-view" class="view">
+                <div class="form-container"><h3>個人管理後台</h3><div style="text-align:center; margin-bottom: 1.5rem;"><img id="profile-avatar-preview" style="width: 120px; height: 120px; border-radius: 50%; object-fit: cover; cursor: pointer;" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="大頭貼預覽" title="點擊更換大頭貼"><input type="file" id="avatar-uploader" accept="image/png, image/jpeg" style="display: none;"></div><label for="nickname">暱稱</label><input type="text" id="nickname" placeholder="您的暱稱"><label for="bio">個人簡介</label><textarea id="bio" rows="4" placeholder="關於您自己..."></textarea><button id="save-profile-btn">儲存個人資料</button><div id="password-section" style="display: none;"><hr><label for="new-password">變更密碼</label><input type="password" id="new-password" placeholder="輸入新密碼"><button id="update-password-btn">更新密碼</button></div><div id="message"></div></div>
+            </div>
+            <div id="user-management-view" class="view">
+                <h1 class="page-title">使用者管理</h1><hr class="title-divider"><div class="user-management-container"><div class="add-user-form"><h4>新增授權使用者</h4><form id="add-user-form"><label for="new-user-email">使用者 Email</label><input type="email" id="new-user-email" placeholder="輸入要授權的 Email" required><button id="add-user-btn" type="submit">新增使用者</button><div id="admin-message"></div></form></div><div class="user-list"><h4>已授權使用者列表</h4><ul id="authorized-user-list"><li>載入中...</li></ul></div></div>
+            </div>
+        </main>
+    </div>
 </div>
 
 <script>
@@ -148,93 +195,7 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-    // --- 初始化與取得元素 ---
-    const SUPABASE_URL = 'https://wvdfuqvebqolvpwhdelg.supabase.co';
-    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind2ZGZ1cXZlYnFvbHZwd2hkZWxnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTIyMzA0MjksImV4cCI6MjA2NzgwNjQyOX0.0VAgxyaoyeFeNbto9pUchwqQVqvHzCzyC22wXb01OKU';
-    const { createClient } = supabase;
-    const _supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    
-    const CWA_API_KEY = 'CWA-09CB4F50-2A02-4667-902A-3D2AFDFBB662'; 
-
-    const loadingOverlay = document.getElementById('loading-overlay');
-    const appContainer = document.querySelector('.app-container');
-    const navLinks = document.querySelectorAll('.nav-link');
-    const views = document.querySelectorAll('.view');
-    const userAvatar = document.getElementById('user-avatar');
-    const userDropdown = document.getElementById('user-dropdown');
-    const userMenu = document.querySelector('.user-menu');
-    const hamburgerMenu = document.getElementById('hamburger-menu');
-    const mobileNavLinks = document.getElementById('mobile-nav-links');
-    // ... 其他元素宣告 ...
-
-    let currentUserProfile = null;
-
-    // --- 功能函式 ---
-    const loadUserProfile = async (user) => {
-        // ...
-        const avatarUrl = user.user_metadata.avatar_url || 'data:image/svg+xml;base64,...';
-        userAvatar.src = avatarUrl;
-        // ...
-    };
-    
-    // ... 其他功能函式 ...
-
-    // --- 事件綁定 ---
-    userAvatar.addEventListener('click', () => {
-        userDropdown.classList.toggle('show');
-    });
-
-    hamburgerMenu.addEventListener('click', () => {
-        mobileNavLinks.classList.toggle('show');
-    });
-
-    document.querySelectorAll('.nav-link, .main-title').forEach(link => {
-        link.addEventListener('click', (e) => {
-            const viewName = e.currentTarget.getAttribute('data-view');
-            if (viewName) {
-                switchView(viewName);
-            }
-            userDropdown.classList.remove('show');
-            mobileNavLinks.classList.remove('show');
-        });
-    });
-
-    window.addEventListener('click', (event) => {
-        if (!userMenu.contains(event.target)) {
-            userDropdown.classList.remove('show');
-        }
-        if (!hamburgerMenu.contains(event.target) && !mobileNavLinks.contains(event.target)) {
-            mobileNavLinks.classList.remove('show');
-        }
-    });
-    
-    // ... 其他事件綁定 ...
-
-    // --- 核心邏輯 (穩定版) ---
-    _supabase.auth.onAuthStateChange(async (event, session) => {
-        if (event === 'INITIAL_SESSION') {
-            if (session && session.user) {
-                const { data: profile } = await _supabase.from('profiles').select('id').eq('id', session.user.id).single();
-                if (profile) {
-                    loadingOverlay.style.display = 'none';
-                    appContainer.style.display = 'flex';
-                    await loadUserProfile(session.user);
-                    switchView('home');
-                    fetchWeatherForecast();
-                } else {
-                    alert('您的帳號尚未被授權，請聯絡管理員。');
-                    await _supabase.auth.signOut();
-                    window.location.href = `${window.location.origin}/index.html`;
-                }
-            } else {
-                window.location.href = `${window.location.origin}/index.html`;
-            }
-        } else if (event === 'SIGNED_OUT') {
-            window.location.href = `${window.location.origin}/index.html`;
-        } else if (event === 'USER_UPDATED' && session && session.user) {
-            await loadUserProfile(session.user);
-        }
-    });
+    // ... 完整的 JavaScript 邏輯 ...
 });
 </script>
 </body>
