@@ -12,25 +12,42 @@
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans TC", sans-serif; margin: 0; background-color: #f4f7f9; }
         .app-container { display: flex; flex-direction: column; height: 100vh; }
 
-        /* 載入中覆蓋層 */
-        #loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: #f4f7f9; display: flex; justify-content: center; align-items: center; font-size: 1.2rem; color: #2c3e50; z-index: 9999; }
+        /* 新增：載入中覆蓋層 */
+        #loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #f4f7f9;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.2rem;
+            color: #2c3e50;
+            z-index: 9999;
+        }
 
         /* 頂部導覽列 */
         .top-nav { height: var(--header-height); background-color: #2c3e50; color: white; display: flex; align-items: center; justify-content: space-between; padding: 0 1.5rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1); position: fixed; top: 0; left: 0; right: 0; z-index: 1000; }
         .nav-left { display: flex; align-items: center; gap: 1rem; }
         .nav-center { display: flex; justify-content: center; flex-grow: 1; }
         .nav-right { display: flex; align-items: center; }
+        
         .main-title { font-family: "Microsoft JhengHei", "微軟正黑體", sans-serif; font-size: 1.5rem; font-weight: bold; color: #fff; text-decoration: none; }
+        
         .nav-links { list-style: none; padding: 0; margin: 0; display: flex; gap: 1rem; }
         .nav-links a { color: #ecf0f1; text-decoration: none; padding: 0.5rem 1rem; border-radius: 4px; transition: background-color 0.2s; }
         .nav-links a:hover { background-color: #34495e; }
         .nav-links a.active { background-color: #1abc9c; font-weight: bold; }
+
         .user-menu { position: relative; }
         .user-avatar { width: 40px; height: 40px; border-radius: 50%; cursor: pointer; border: 2px solid #34495e; }
         .dropdown-menu { display: none; position: absolute; right: 0; top: 50px; background-color: white; border-radius: 8px; box-shadow: 0 8px 16px rgba(0,0,0,0.2); z-index: 1; min-width: 160px; overflow: hidden; }
         .dropdown-menu.show { display: block; }
         .dropdown-menu a, .dropdown-menu button { color: black; padding: 12px 16px; text-decoration: none; display: block; background: none; border: none; width: 100%; text-align: left; cursor: pointer; font-size: 1em; }
         .dropdown-menu a:hover, .dropdown-menu button:hover { background-color: #f1f1f1; }
+        
         .hamburger-menu { display: none; font-size: 1.8rem; cursor: pointer; }
         .mobile-nav-links { display: none; position: absolute; top: var(--header-height); left: 0; right: 0; background-color: #34495e; list-style: none; padding: 0; margin: 0; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
         .mobile-nav-links.show { display: block; }
@@ -41,7 +58,7 @@
         .view { display: none; }
         .view.active { display: block; }
         
-        /* 其他樣式 */
+        /* 其他樣式 (大部分與之前相同) */
         .form-container { background: white; padding: 2.5rem; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); max-width: 600px; margin: auto; }
         h3, h4 { color: #343a40; }
         label { display: block; margin-top: 1rem; margin-bottom: 5px; font-weight: bold; color: #495057; }
@@ -83,14 +100,8 @@
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         #map-container { margin-top: 2rem; position: relative; }
         #map { height: 400px; width: 100%; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
-        #pac-input { background-color: #fff; font-size: 15px; font-weight: 300; margin: 10px; padding: 10px; text-overflow: ellipsis; width: 300px; border: 1px solid transparent; border-radius: 4px; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3); }
-        .user-management-container { display: flex; gap: 2rem; flex-wrap: wrap; }
-        .user-list, .add-user-form { flex: 1; min-width: 300px; background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
-        .user-list ul { list-style: none; padding: 0; }
-        .user-list li { display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 0; border-bottom: 1px solid #eee; }
-        .user-list li:last-child { border-bottom: none; }
-        .user-list .user-email { color: #333; }
-        .user-list .user-role { background-color: #eee; color: #555; padding: 3px 8px; border-radius: 12px; font-size: 0.8em; }
+        #pac-container { position: absolute; top: 10px; left: 10px; z-index: 10; }
+        gmp-place-autocomplete { width: 300px; }
 
         @media (max-width: 768px) {
             .nav-center { display: none; }
@@ -147,8 +158,197 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-    // ... 完整的 JavaScript 邏輯 ...
+    // --- 初始化與取得元素 ---
+    const SUPABASE_URL = 'https://wvdfuqvebqolvpwhdelg.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind2ZGZ1cXZlYnFvbHZwd2hkZWxnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTIyMzA0MjksImV4cCI6MjA2NzgwNjQyOX0.0VAgxyaoyeFeNbto9pUchwqQVqvHzCzyC22wXb01OKU';
+    const { createClient } = supabase;
+    const _supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    
+    const CWA_API_KEY = 'CWA-09CB4F50-2A02-4667-902A-3D2AFDFBB662'; 
+
+    const loadingOverlay = document.getElementById('loading-overlay');
+    const appContainer = document.querySelector('.app-container');
+    const navLinks = document.querySelectorAll('.nav-link');
+    const views = document.querySelectorAll('.view');
+    const userAvatar = document.getElementById('user-avatar');
+    const userDropdown = document.getElementById('user-dropdown');
+    const userMenu = document.querySelector('.user-menu');
+    const hamburgerMenu = document.getElementById('hamburger-menu');
+    const mobileNavLinks = document.getElementById('mobile-nav-links');
+    // ... 其他元素宣告 ...
+
+    let currentUserProfile = null;
+
+    // --- 功能函式 ---
+    const loadUserProfile = async (user) => {
+        // ...
+        const avatarUrl = user.user_metadata.avatar_url || 'data:image/svg+xml;base64,...';
+        userAvatar.src = avatarUrl;
+        // ...
+    };
+    
+    // ... 其他功能函式 ...
+
+    // --- 事件綁定 ---
+    userAvatar.addEventListener('click', () => {
+        userDropdown.classList.toggle('show');
+    });
+
+    hamburgerMenu.addEventListener('click', () => {
+        mobileNavLinks.classList.toggle('show');
+    });
+
+    document.querySelectorAll('.nav-link, .main-title').forEach(link => {
+        link.addEventListener('click', (e) => {
+            const viewName = e.currentTarget.getAttribute('data-view');
+            if (viewName) {
+                switchView(viewName);
+            }
+            userDropdown.classList.remove('show');
+            mobileNavLinks.classList.remove('show');
+        });
+    });
+
+    window.addEventListener('click', (event) => {
+        if (!userMenu.contains(event.target)) {
+            userDropdown.classList.remove('show');
+        }
+        if (!hamburgerMenu.contains(event.target) && !mobileNavLinks.contains(event.target)) {
+            mobileNavLinks.classList.remove('show');
+        }
+    });
+    
+    // ... 其他事件綁定 ...
+
+    // --- 核心邏輯 (穩定版) ---
+    _supabase.auth.onAuthStateChange(async (event, session) => {
+        if (event === 'INITIAL_SESSION') {
+            loadingOverlay.style.display = 'none';
+            if (session && session.user) {
+                appContainer.style.display = 'flex';
+                await loadUserProfile(session.user);
+                switchView('home');
+                fetchWeatherForecast();
+            } else {
+                window.location.href = `${window.location.origin}/index.html`;
+            }
+        } else if (event === 'SIGNED_OUT') {
+            window.location.href = `${window.location.origin}/index.html`;
+        } else if (event === 'USER_UPDATED' && session && session.user) {
+            await loadUserProfile(session.user);
+        }
+    });
 });
 </script>
+</body>
+</html>
+```
+
+### 步驟二：更新您的 `index.html` 檔案
+
+為了確保兩個頁面的邏輯完全同步，避免任何可能的跳轉問題，也請您一併使用以下最新的 `index.html` 程式碼。
+
+
+```html
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>內部共用平台 - 登入</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans TC", sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; background-color: #f8f9fa; margin: 0; }
+        .container { background: white; padding: 2.5rem; border-radius: 8px; box-shadow: 0 8px 30px rgba(0,0,0,0.1); text-align: center; width: 380px; box-sizing: border-box; }
+        h2 { color: #343a40; margin-top: 0; margin-bottom: 1.5rem; }
+        a { color: #007bff; text-decoration: none; font-size: 0.9em; }
+        a:hover { text-decoration: underline; }
+        input { width: 100%; padding: 12px; margin-bottom: 12px; border: 1px solid #ced4da; border-radius: 4px; box-sizing: border-box; font-size: 1em; }
+        button { width: 100%; padding: 12px; margin-bottom: 10px; border: none; border-radius: 4px; color: white; font-weight: bold; cursor: pointer; font-size: 1em; transition: opacity 0.2s; }
+        button:hover { opacity: 0.85; }
+        #signup-btn { background-color: #28a745; }
+        #signin-btn { background-color: #007bff; }
+        #google-btn { background-color: #db4437; }
+        hr { border: 0; border-top: 1px solid #dee2e6; margin: 20px 0; }
+        #message { margin-top: 15px; color: #dc3545; font-weight: bold; min-height: 1.2em;}
+    </style>
+</head>
+<body>
+
+<div class="container" style="display: none;">
+    <div id="auth-view">
+        <h2>內部平台登入</h2>
+        <input type="email" id="email" placeholder="電子郵件" required />
+        <input type="password" id="password" placeholder="密碼" required />
+        <button id="signin-btn">用密碼登入</button>
+        <a href="#" id="forgot-password-link" style="display: block; margin-top: 10px;">忘記密碼？</a>
+        <hr>
+        <button id="signup-btn">註冊新帳號</button>
+        <button id="google-btn">用 Google 帳號登入</button>
+    </div>
+    <div id="message"></div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    // --- 1. 初始化設定 ---
+    const SUPABASE_URL = 'https://wvdfuqvebqolvpwhdelg.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind2ZGZ1cXZlYnFvbHZwd2hkZWxnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTIyMzA0MjksImV4cCI6MjA2NzgwNjQyOX0.0VAgxyaoyeFeNbto9pUchwqQVqvHzCzyC22wXb01OKU';
+    const { createClient } = supabase;
+    const _supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    // --- 2. 取得頁面元素 ---
+    const container = document.querySelector('.container');
+    const emailInput = document.getElementById('email');
+    const passwordInput = document.getElementById('password');
+    const messageDiv = document.getElementById('message');
+
+    // --- 3. 認證功能函式 ---
+    const signUp = async () => {
+        messageDiv.innerText = "處理中...";
+        const { error } = await _supabase.auth.signUp({ email: emailInput.value, password: passwordInput.value });
+        if (error) { messageDiv.innerText = '註冊失敗: ' + error.message; }
+        else { messageDiv.innerText = ""; alert('註冊成功！但您的帳號需要管理員授權後才能登入。'); }
+    };
+    const signInWithPassword = async () => {
+        messageDiv.innerText = "登入中...";
+        const { error } = await _supabase.auth.signInWithPassword({ email: emailInput.value, password: passwordInput.value });
+        if (error) { messageDiv.innerText = '登入失敗: ' + error.message; }
+    };
+    const signInWithGoogle = async () => {
+        await _supabase.auth.signInWithOAuth({ provider: 'google' });
+    };
+    const forgotPassword = async () => {
+        const email = prompt("請輸入您註冊的電子郵件地址：");
+        if (!email) return; 
+        const resetUrl = `${window.location.origin}/reset.html`;
+        messageDiv.innerText = "正在發送密碼重設郵件...";
+        const { error } = await _supabase.auth.resetPasswordForEmail(email, { redirectTo: resetUrl });
+        if (error) { messageDiv.innerText = "錯誤：" + error.message; }
+        else { messageDiv.innerText = ""; alert("密碼重設郵件已成功寄出，請檢查您的信箱。"); }
+    };
+    
+    // --- 4. 事件綁定 ---
+    document.getElementById('signin-btn').addEventListener('click', signInWithPassword);
+    document.getElementById('signup-btn').addEventListener('click', signUp);
+    document.getElementById('google-btn').addEventListener('click', signInWithGoogle);
+    document.getElementById('forgot-password-link').addEventListener('click', forgotPassword);
+
+    // --- 5. 核心：監聽認證狀態變化 (穩定版) ---
+    _supabase.auth.onAuthStateChange((event, session) => {
+        if (event === 'INITIAL_SESSION') {
+            if (session) {
+                window.location.href = `${window.location.origin}/app.html`;
+            } else {
+                // 只有在確認未登入後，才顯示登入表單
+                container.style.display = 'block';
+            }
+        } else if (event === 'SIGNED_IN') {
+             window.location.href = `${window.location.origin}/app.html`;
+        }
+    });
+});
+</script>
+
 </body>
 </html>
