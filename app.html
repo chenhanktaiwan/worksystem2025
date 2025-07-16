@@ -5,18 +5,20 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>我的應用程式</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script async src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBfAUYXPVz9lqN5QPyzcNmeCg5ect9ZNcA&callback=initMap&libraries=places&loading=async"></script>
+    <!-- Google Maps API Script - 已填入您的金鑰 -->
+    <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBfAUYXPVz9lqN5QPyzcNmeCg5ect9ZNcA&callback=initMap"></script>
     <style>
         /* 全局與佈局 */
         :root { --sidebar-width: 240px; }
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans TC", sans-serif; margin: 0; background-color: #f4f7f9; }
         .app-container { display: flex; height: 100vh; }
 
-        /* ... 其他 CSS 樣式 (與上一版相同) ... */
+        /* 新增：載入中覆蓋層 */
         #loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: #f4f7f9; display: flex; justify-content: center; align-items: center; font-size: 1.2rem; color: #2c3e50; z-index: 9999; }
-        .sidebar { width: var(--sidebar-width); background-color: #2c3e50; color: white; display: flex; flex-direction: column; transition: all 0.3s ease-in-out; }
-        .sidebar-main-title { font-family: "Microsoft JhengHei", "微軟正黑體", sans-serif; font-size: 20pt; font-weight: bold; text-align: center; color: #fff; padding: 1.5rem 1rem; margin: 0; border-bottom: 1px solid #34495e; }
-        .sidebar-header { text-align: center; padding: 1.5rem 1rem; }
+
+        /* 側邊導覽列 */
+        .sidebar { width: var(--sidebar-width); background-color: #2c3e50; color: white; display: flex; flex-direction: column; padding: 1.5rem 0; transition: all 0.3s ease-in-out; }
+        .sidebar-header { text-align: center; padding: 0 1rem; margin-bottom: 2rem; }
         .sidebar-avatar { width: 80px; height: 80px; border-radius: 50%; object-fit: cover; border: 3px solid #34495e; }
         .sidebar-username { margin-top: 0.75rem; font-weight: bold; font-size: 1.1em; }
         .sidebar-nav { flex-grow: 1; }
@@ -24,36 +26,47 @@
         .sidebar-nav a { display: flex; align-items: center; gap: 1rem; padding: 1rem 1.5rem; color: #ecf0f1; text-decoration: none; transition: background-color 0.2s; border-left: 3px solid transparent; }
         .sidebar-nav a:hover { background-color: #34495e; }
         .sidebar-nav a.active { background-color: #1abc9c; border-left-color: #16a085; }
-        .sidebar-footer { padding: 1.5rem; }
+        .sidebar-footer { padding: 0 1.5rem; }
         .nav-icon { font-size: 1.2em; }
+        
+        /* 主要內容區 */
         .content-area { flex-grow: 1; padding: 2rem; overflow-y: auto; transition: all 0.3s ease-in-out; }
         .view { display: none; }
         .view.active { display: block; }
+        
+        /* 表單與通用元件樣式 */
         .form-container { background: white; padding: 2.5rem; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); max-width: 600px; }
-        h3, h4 { color: #343a40; }
+        h3 { color: #343a40; }
         label { display: block; margin-top: 1rem; margin-bottom: 5px; font-weight: bold; color: #495057; }
-        input[type="text"], input[type="password"], input[type="email"], textarea { width: 100%; padding: 12px; margin-bottom: 12px; border: 1px solid #ced4da; border-radius: 4px; box-sizing: border-box; font-size: 1em; }
+        input[type="text"], input[type="password"], textarea { width: 100%; padding: 12px; margin-bottom: 12px; border: 1px solid #ced4da; border-radius: 4px; box-sizing: border-box; font-size: 1em; }
         button { width: 100%; padding: 12px; margin-top: 10px; border: none; border-radius: 4px; color: white; font-weight: bold; cursor: pointer; font-size: 1em; }
-        #save-profile-btn, #add-user-btn { background-color: #007bff; }
+        #save-profile-btn { background-color: #007bff; }
         #update-password-btn { background-color: #17a2b8; }
         #signout-btn { background-color: #e74c3c; width: auto; display: block; text-align: center; }
         #message { margin-top: 15px; font-weight: bold; min-height: 1.2em; text-align: center; }
         hr { border: 0; border-top: 1px solid #dee2e6; margin: 20px 0; }
+
+        /* 側邊欄收合樣式 */
         #sidebar-toggle-btn { background-color: #34495e; width: 100%; margin-bottom: 1rem; }
         .app-container.sidebar-collapsed .sidebar { width: 88px; }
-        .app-container.sidebar-collapsed .sidebar-main-title { font-size: 0; padding: 0; border: none;}
-        .app-container.sidebar-collapsed .sidebar-header { padding: 1.5rem 0.5rem; }
+        .app-container.sidebar-collapsed .sidebar-header { padding: 0 0.5rem; }
         .app-container.sidebar-collapsed .sidebar-avatar { width: 50px; height: 50px; }
         .app-container.sidebar-collapsed .sidebar-username { display: none; }
         .app-container.sidebar-collapsed .sidebar-nav a { justify-content: center; padding: 1rem 0; }
         .app-container.sidebar-collapsed .nav-text { display: none; }
         .app-container.sidebar-collapsed #sidebar-toggle-btn::after { content: "展開"; }
         .app-container.sidebar-collapsed #sidebar-toggle-btn { font-size: 0; }
+
+        /* 頁面主標題樣式 */
         .page-title { font-family: "Microsoft JhengHei", "微軟正黑體", sans-serif; font-size: 20pt; font-weight: bold; text-align: center; color: #2c3e50; margin-top: 0; margin-bottom: 1rem; }
         .title-divider { border: 0; border-top: 1px solid #e0e0e0; margin-bottom: 2rem; }
-        .dashboard-grid { display: flex; flex-wrap: wrap; gap: 2rem; align-items: stretch; }
-        .dashboard-item { flex: 1; min-width: 300px; display: flex; flex-direction: column; }
-        .weather-widget { background: #2D9CDB; color: white; border-radius: 8px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); font-family: "Microsoft JhengHei", "微軟正黑體", sans-serif; flex-grow: 1; }
+
+        /* 儀表板網格佈局 */
+        .dashboard-grid { display: flex; flex-wrap: wrap; gap: 2rem; align-items: flex-start; }
+        .dashboard-item { flex: 1; min-width: 300px; }
+
+        /* 天氣小工具樣式 */
+        .weather-widget { background: #4A90E2; color: white; border-radius: 8px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); font-family: "Microsoft JhengHei", "微軟正黑體", sans-serif; }
         .weather-today { display: flex; justify-content: space-between; align-items: center; padding-bottom: 15px; border-bottom: 1px solid rgba(255, 255, 255, 0.3); }
         .weather-today-main { display: flex; align-items: center; gap: 15px; }
         .weather-today-icon { font-size: 3.5rem; line-height: 1; }
@@ -67,6 +80,8 @@
         .forecast-day .icon { font-size: 2rem; margin: 8px 0; }
         .forecast-day .temp { font-size: 1rem; font-weight: bold; }
         .forecast-day .pop { font-size: 0.8em; opacity: 0.8; margin-top: 4px;}
+
+        /* 搜尋小工具通用樣式 */
         .search-widget { background: #ffffff; border-radius: 8px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
         .search-widget h4 { margin-top: 0; margin-bottom: 15px; color: #343a40; text-align: center; }
         .search-form { display: flex; gap: 10px; }
@@ -74,33 +89,16 @@
         .search-form button { margin-top: 0; width: auto; padding: 0 20px; }
         #google-search-btn { background-color: #4285F4; }
         #gemini-search-btn { background-color: #8E44AD; }
+
+        /* Gemini 搜尋結果樣式 */
         .gemini-widget { margin-top: 2rem; }
-        #gemini-results { margin-top: 1rem; padding: 15px; border: 1px solid #e0e0e0; border-radius: 8px; background-color: #f9f9f9; min-height: 150px; max-height: 250px; overflow-y: auto; white-space: pre-wrap; text-align: left; }
+        #gemini-results { margin-top: 1rem; padding: 15px; border: 1px solid #e0e0e0; border-radius: 8px; background-color: #f9f9f9; min-height: 50px; white-space: pre-wrap; text-align: left; }
         .loading-spinner { border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; margin: 10px auto; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        #map-container { margin-top: 2rem; position: relative; }
+
+        /* 地圖樣式 */
+        #map-container { margin-top: 2rem; }
         #map { height: 400px; width: 100%; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
-        #pac-input {
-            background-color: #fff;
-            font-size: 15px;
-            font-weight: 300;
-            margin: 10px;
-            padding: 10px;
-            text-overflow: ellipsis;
-            width: 300px;
-            border: 1px solid transparent;
-            border-radius: 4px;
-            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
-        }
-        
-        /* 使用者管理介面樣式 */
-        .user-management-container { display: flex; gap: 2rem; flex-wrap: wrap; }
-        .user-list, .add-user-form { flex: 1; min-width: 300px; background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
-        .user-list ul { list-style: none; padding: 0; }
-        .user-list li { display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 0; border-bottom: 1px solid #eee; }
-        .user-list li:last-child { border-bottom: none; }
-        .user-list .user-email { color: #333; }
-        .user-list .user-role { background-color: #eee; color: #555; padding: 3px 8px; border-radius: 12px; font-size: 0.8em; }
     </style>
 </head>
 <body>
@@ -109,19 +107,13 @@
 
 <div class="app-container" style="display: none;">
     <aside class="sidebar">
-        <h1 class="sidebar-main-title">我的工作站</h1>
-        <div class="sidebar-header">
-            <img id="sidebar-avatar-preview" class="sidebar-avatar" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="Avatar">
-            <h4 id="sidebar-username-preview" class="sidebar-username">使用者</h4>
-        </div>
+        <div class="sidebar-header"><img id="sidebar-avatar-preview" class="sidebar-avatar" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="Avatar"><h4 id="sidebar-username-preview" class="sidebar-username">使用者</h4></div>
         <nav class="sidebar-nav">
             <ul>
                 <li><a href="#" class="nav-link active" data-view="home"><span class="nav-icon">🏠</span> <span class="nav-text">個人首頁</span></a></li>
                 <li><a href="#" class="nav-link" data-view="calendar"><span class="nav-icon">🗓️</span> <span class="nav-text">行事曆</span></a></li>
                 <li><a href="#" class="nav-link" data-view="chat"><span class="nav-icon">💬</span> <span class="nav-text">聊天</span></a></li>
                 <li><a href="#" class="nav-link" data-view="profile"><span class="nav-icon">⚙️</span> <span class="nav-text">個人管理後台</span></a></li>
-                <!-- 新增：使用者管理連結，預設隱藏 -->
-                <li id="user-management-link" style="display: none;"><a href="#" class="nav-link" data-view="user-management"><span class="nav-icon">👥</span> <span class="nav-text">使用者管理</span></a></li>
             </ul>
         </nav>
         <div class="sidebar-footer">
@@ -131,8 +123,9 @@
     </aside>
 
     <main class="content-area">
-        <!-- ... 其他視圖 ... -->
         <div id="home-view" class="view active">
+            <h1 class="page-title">工作站</h1>
+            <hr class="title-divider">
             <div class="dashboard-grid">
                 <div id="weather-forecast-container" class="dashboard-item">
                     <p>正在載入天氣資訊...</p>
@@ -157,44 +150,29 @@
                 </div>
             </div>
             <div id="map-container">
-                <input id="pac-input" type="text" placeholder="搜尋地點..." />
                 <div id="map"></div>
             </div>
         </div>
+        <!-- 其他視圖 ... -->
         <div id="calendar-view" class="view"><h1 class="page-title">行事曆</h1><hr class="title-divider"><p>此處將放置行事曆功能。</p></div>
         <div id="chat-view" class="view"><h1 class="page-title">聊天</h1><hr class="title-divider"><p>此處將放置聊天室功能。</p></div>
         <div id="profile-view" class="view"><div class="form-container"><h3>個人管理後台</h3><div style="text-align:center; margin-bottom: 1.5rem;"><img id="profile-avatar-preview" style="width: 120px; height: 120px; border-radius: 50%; object-fit: cover; cursor: pointer;" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="大頭貼預覽" title="點擊更換大頭貼"><input type="file" id="avatar-uploader" accept="image/png, image/jpeg" style="display: none;"></div><label for="nickname">暱稱</label><input type="text" id="nickname" placeholder="您的暱稱"><label for="bio">個人簡介</label><textarea id="bio" rows="4" placeholder="關於您自己..."></textarea><button id="save-profile-btn">儲存個人資料</button><div id="password-section" style="display: none;"><hr><label for="new-password">變更密碼</label><input type="password" id="new-password" placeholder="輸入新密碼"><button id="update-password-btn">更新密碼</button></div><div id="message"></div></div></div>
-
-        <!-- 新增：使用者管理視圖 -->
-        <div id="user-management-view" class="view">
-            <h1 class="page-title">使用者管理</h1>
-            <hr class="title-divider">
-            <div class="user-management-container">
-                <div class="add-user-form">
-                    <h4>新增授權使用者</h4>
-                    <form id="add-user-form">
-                        <label for="new-user-email">使用者 Email</label>
-                        <input type="email" id="new-user-email" placeholder="輸入要授權的 Email" required>
-                        <button id="add-user-btn" type="submit">新增使用者</button>
-                        <div id="admin-message"></div>
-                    </form>
-                </div>
-                <div class="user-list">
-                    <h4>已授權使用者列表</h4>
-                    <ul id="authorized-user-list">
-                        <li>載入中...</li>
-                    </ul>
-                </div>
-            </div>
-        </div>
     </main>
 </div>
 
 <script>
-    async function initMap() {
-        // ... (與上一版相同) ...
+    // 將地圖初始化函式設為全域函式
+    function initMap() {
+        const taipeiMainStation = { lat: 25.0479, lng: 121.5171 };
+        const map = new google.maps.Map(document.getElementById("map"), {
+            zoom: 14,
+            center: taipeiMainStation,
+        });
+        const marker = new google.maps.Marker({
+            position: taipeiMainStation,
+            map: map,
+        });
     }
-    window.initMap = initMap;
 </script>
 
 <script>
@@ -205,226 +183,181 @@ document.addEventListener('DOMContentLoaded', () => {
     const { createClient } = supabase;
     const _supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     
-    const CWA_API_KEY = 'CWA-09CB4F50-2A02-4667-902A-3D2AFDFBB662'; 
+    // 您的 Google API 金鑰 (地圖和天氣共用)
+    const GOOGLE_API_KEY = 'AIzaSyBfAUYXPVz9lqN5QPyzcNmeCg5ect9ZNcA'; 
 
-    const userManagementLink = document.getElementById('user-management-link');
-    const addUserForm = document.getElementById('add-user-form');
-    const newUserEmailInput = document.getElementById('new-user-email');
-    const userListUl = document.getElementById('authorized-user-list');
-    const adminMessageDiv = document.getElementById('admin-message');
+    const loadingOverlay = document.getElementById('loading-overlay');
+    const appContainer = document.querySelector('.app-container');
+    const weatherContainer = document.getElementById('weather-forecast-container');
     // ... 其他元素宣告 ...
+    const sidebarToggleBtn = document.getElementById('sidebar-toggle-btn');
+    const sidebarAvatar = document.getElementById('sidebar-avatar-preview');
+    const sidebarUsername = document.getElementById('sidebar-username-preview');
+    const navLinks = document.querySelectorAll('.nav-link');
+    const views = document.querySelectorAll('.view');
+    const signOutBtn = document.getElementById('signout-btn');
+    const profileAvatar = document.getElementById('profile-avatar-preview');
+    const avatarUploader = document.getElementById('avatar-uploader');
+    const nicknameInput = document.getElementById('nickname');
+    const bioTextarea = document.getElementById('bio');
+    const saveProfileBtn = document.getElementById('save-profile-btn');
+    const messageDiv = document.getElementById('message');
+    const passwordSection = document.getElementById('password-section');
+    const newPasswordInput = document.getElementById('new-password');
+    const updatePasswordBtn = document.getElementById('update-password-btn');
+    const geminiSearchForm = document.getElementById('gemini-search-form');
+    const geminiPromptInput = document.getElementById('gemini-prompt');
+    const geminiResultsDiv = document.getElementById('gemini-results');
+    const userGeminiKeyInput = document.getElementById('user-gemini-key');
 
-    let currentUserProfile = null;
+    let currentUser = null;
 
-    // --- 功能函式 ---
-    const loadUserProfile = async (user) => {
-        currentUser = user;
-        
-        const { data: profile, error } = await _supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', user.id)
-            .single();
+    // --- 功能函式 (與上一版相同) ---
+    const loadUserProfile = (user) => { /* ... */ };
+    const switchView = (viewName) => { /* ... */ };
+    const signOut = async () => { /* ... */ };
+    const updateProfile = async () => { /* ... */ };
+    const uploadAvatar = async (event) => { /* ... */ };
+    const updatePassword = async () => { /* ... */ };
+    const handleGeminiSearch = async (event) => { /* ... */ };
 
-        if (error && error.code !== 'PGRST116') { // PGRST116: no rows found
-            console.error('讀取 profile 失敗:', error);
+    // --- 新增：Google 天氣相關函式 ---
+    const getGoogleWeatherIcon = (condition) => {
+        const lowerCaseCondition = condition.toLowerCase();
+        if (lowerCaseCondition.includes('thunderstorm')) return '⛈️';
+        if (lowerCaseCondition.includes('rain') || lowerCaseCondition.includes('drizzle') || lowerCaseCondition.includes('showers')) return '🌧️';
+        if (lowerCaseCondition.includes('snow') || lowerCaseCondition.includes('sleet')) return '❄️';
+        if (lowerCaseCondition.includes('fog') || lowerCaseCondition.includes('haze') || lowerCaseCondition.includes('mist')) return '🌫️';
+        if (lowerCaseCondition.includes('cloudy')) return '☁️';
+        if (lowerCaseCondition.includes('partly cloudy')) return '🌤️';
+        if (lowerCaseCondition.includes('clear') || lowerCaseCondition.includes('sunny')) return '☀️';
+        return '❓';
+    };
+
+    const fetchGoogleWeather = async () => {
+        if (!GOOGLE_API_KEY) {
+            weatherContainer.innerHTML = `<p style="color: red;">請在程式碼中填入您的 Google API 金鑰。</p>`;
             return;
         }
         
-        currentUserProfile = profile;
+        const apiUrl = 'https://weather.googleapis.com/v1/forecast:build';
+        const payload = {
+            location: {
+                latitude: 25.0478,
+                longitude: 121.5171
+            },
+            languageCode: 'zh-TW',
+            params: ["currentConditions", "dailyForecasts"],
+            dailyForecastDays: 7
+        };
 
-        // ... 更新 UI 的程式碼 ...
+        try {
+            const response = await fetch(`${apiUrl}?key=${GOOGLE_API_KEY}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
 
-        if (profile && profile.role === 'admin') {
-            userManagementLink.style.display = 'block';
-            fetchUsers();
-        } else {
-            userManagementLink.style.display = 'none';
+            if (!response.ok) throw new Error(`Google Weather API 錯誤! 狀態: ${response.status}`);
+            const data = await response.json();
+            
+            if (!data.dailyForecasts || !data.currentConditions) {
+                throw new Error('API 回應格式不正確');
+            }
+
+            // --- 建立今日天氣 HTML ---
+            const today = data.currentConditions;
+            const todayForecast = data.dailyForecasts[0];
+            const todayHtml = `
+                <div class="weather-today">
+                    <div class="weather-today-main">
+                        <div class="weather-today-icon">${getGoogleWeatherIcon(today.condition)}</div>
+                        <div class="weather-today-details">
+                            <div class="condition">${today.condition}</div>
+                            <div class="pop">濕度：${Math.round(today.humidity * 100)}%</div>
+                        </div>
+                    </div>
+                    <div style="text-align: right;">
+                        <div class="weather-today-temp">${Math.round(todayForecast.temperature.low)}° / ${Math.round(todayForecast.temperature.high)}°</div>
+                        <div class="weather-today-location">臺北市</div>
+                    </div>
+                </div>
+            `;
+
+            // --- 建立未來預報 HTML ---
+            let forecastHtml = '<div class="weather-forecast">';
+            for (let i = 1; i < data.dailyForecasts.length && i <= 7; i++) {
+                const forecast = data.dailyForecasts[i];
+                const date = new Date(forecast.date.year, forecast.date.month - 1, forecast.date.day);
+                const day = `${date.getMonth() + 1}/${date.getDate()}`;
+                const icon = getGoogleWeatherIcon(forecast.condition);
+                const tempHigh = Math.round(forecast.temperature.high);
+                const tempLow = Math.round(forecast.temperature.low);
+                const pop = Math.round(forecast.precipitationChance * 100);
+
+                forecastHtml += `
+                    <div class="forecast-day">
+                        <div class="date">${day}</div>
+                        <div class="icon">${icon}</div>
+                        <div class="temp">${tempLow}°/${tempHigh}°</div>
+                        <div class="pop">💧 ${pop}%</div>
+                    </div>
+                `;
+            }
+            forecastHtml += '</div>';
+            
+            weatherContainer.innerHTML = `<div class="weather-widget">${todayHtml}${forecastHtml}</div>`;
+
+        } catch (error) {
+            weatherContainer.innerHTML = `<p style="color: red; text-align: center;">天氣資訊載入失敗: ${error.message}</p>`;
+            console.error(error);
         }
     };
-    
-    const fetchUsers = async () => {
-        const { data: users, error } = await _supabase
-            .from('profiles')
-            .select('email, role');
-        
-        if (error) {
-            console.error('取得使用者列表失敗:', error);
-            userListUl.innerHTML = '<li>無法載入列表</li>';
-            return;
-        }
 
-        userListUl.innerHTML = '';
-        users.forEach(user => {
-            const li = document.createElement('li');
-            li.innerHTML = `<span class="user-email">${user.email}</span> <span class="user-role">${user.role}</span>`;
-            userListUl.appendChild(li);
-        });
-    };
-
-    const addUser = async (event) => {
-        event.preventDefault();
-        const email = newUserEmailInput.value.trim();
-        if (!email) return;
-
-        adminMessageDiv.innerText = '處理中...';
-        
-        // 注意：這是一個簡化的作法。在正式產品中，應該透過 Edge Function 來處理，避免暴露使用者 email。
-        // 這個作法依賴 RLS 規則，只允許 admin 角色執行。
-        const { error } = await _supabase
-            .from('profiles')
-            .insert({ email: email, role: 'member' });
-
-        if (error) {
-            adminMessageDiv.innerText = `新增失敗: ${error.message}`;
-        } else {
-            adminMessageDiv.innerText = `已成功授權 ${email}！請該使用者用此 Email 註冊/登入。`;
-            newUserEmailInput.value = '';
-            fetchUsers();
-        }
-    };
-
-    // ... 其他功能函式 ...
+    // --- (函式複製) ---
+    const F_loadUserProfile = (user) => { currentUser = user; const nickname = user.user_metadata.nickname || user.email.split('@')[0]; const avatarUrl = user.user_metadata.avatar_url || 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMjAiIGhlaWdodD0iMTIwIiB2aWV3Qm94PSIwIDAgMTIwIDEyMCI+CiAgPHJlY3Qgd2lkdGg9IjEyMCIgaGVpZ2h0PSIxMjAiIHN0eWxlPSJmaWxsOiNjZWMwY2U7IiAvPgogIDxwYXRoIGQ9Ik02MCA2MEM3Ni41NjkgNjAgOTAgNDYuNTY5IDkwIDMwQzkwIDEzLjQzMSA3Ni41NjkgMCA2MCAwQzQzLjQzMSAwIDMwIDEzLjQzMSA5MCAzMEMzMCA0Ni41NjkgNDMuNDMxIDYwIDYwIDYwWk02MCA3MEMzNy45MDkgNzEgMjAgODguOTA5IDIwIDExMVYxMjBIMTAwVjExMUMxMDAgODguOTA5IDgyLjA5MSA3MSA2MCA3MVoiIGZpbGw9IiNhYWFiYjAiLz4KPC9zdmc+'; sidebarAvatar.src = avatarUrl; sidebarUsername.innerText = nickname; profileAvatar.src = avatarUrl; nicknameInput.value = user.user_metadata.nickname || ''; bioTextarea.value = user.user_metadata.bio || ''; if (user.app_metadata.provider !== 'google' && user.app_metadata.providers.includes('email')) { passwordSection.style.display = 'block'; } else { passwordSection.style.display = 'none'; } };
+    const F_switchView = (viewName) => { views.forEach(view => view.classList.remove('active')); navLinks.forEach(link => link.classList.remove('active')); const targetView = document.getElementById(`${viewName}-view`); if (targetView) { targetView.classList.add('active'); } const targetLink = document.querySelector(`.nav-link[data-view="${viewName}"]`); if (targetLink) { targetLink.classList.add('active'); } };
+    const F_signOut = async () => { await _supabase.auth.signOut(); };
+    const F_updateProfile = async () => { messageDiv.innerText = "更新中..."; const { data, error } = await _supabase.auth.updateUser({ data: { nickname: nicknameInput.value.trim(), bio: bioTextarea.value.trim() } }); if (error) { messageDiv.innerText = "更新失敗：" + error.message; } else { messageDiv.innerText = "個人資料已成功儲存！"; F_loadUserProfile(data.user); } };
+    const F_uploadAvatar = async (event) => { const file = event.target.files[0]; if (!file || !currentUser) return; const fileExt = file.name.split('.').pop(); const filePath = `${currentUser.id}/${Date.now()}.${fileExt}`; messageDiv.innerText = "大頭貼上傳中..."; const { error: uploadError } = await _supabase.storage.from('avatars').upload(filePath, file); if (uploadError) { messageDiv.innerText = "上傳失敗：" + uploadError.message; return; } const { data: urlData } = _supabase.storage.from('avatars').getPublicUrl(filePath); const { data, error: updateError } = await _supabase.auth.updateUser({ data: { avatar_url: urlData.publicUrl } }); if (updateError) { messageDiv.innerText = "更新大頭貼失敗：" + updateError.message; } else { messageDiv.innerText = "大頭貼已更新！"; F_loadUserProfile(data.user); } };
+    const F_updatePassword = async () => { const newPassword = newPasswordInput.value; if (!newPassword || newPassword.length < 6) { messageDiv.innerText = '密碼長度至少需要 6 個字元。'; return; } messageDiv.innerText = "更新中..."; const { error } = await _supabase.auth.updateUser({ password: newPassword }); if (error) { messageDiv.innerText = '密碼更新失敗: ' + error.message; } else { messageDiv.innerText = '密碼已成功更新！'; newPasswordInput.value = ''; } };
+    const F_handleGeminiSearch = async (event) => { event.preventDefault(); const prompt = geminiPromptInput.value; if (!prompt) return; geminiResultsDiv.innerHTML = '<div class="loading-spinner"></div><p style="text-align:center;">思考中...</p>'; try { const chatHistory = [{ role: "user", parts: [{ text: prompt }] }]; const payload = { contents: chatHistory }; const apiKey = userGeminiKeyInput.value.trim() || ""; const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`; const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }); if (!response.ok) { if (response.status === 403) { throw new Error(`API 錯誤 403 (Forbidden)。這通常表示 API 金鑰無效或權限不足。請確認您已啟用 Generative Language API 並檢查金鑰設定。`); } throw new Error(`API 錯誤: ${response.status} ${response.statusText}`); } const result = await response.json(); if (result.candidates && result.candidates.length > 0 && result.candidates[0].content && result.candidates[0].content.parts && result.candidates[0].content.parts.length > 0) { const text = result.candidates[0].content.parts[0].text; geminiResultsDiv.innerText = text; } else { geminiResultsDiv.innerText = '抱歉，無法取得有效的回覆。'; } } catch (error) { console.error("Gemini API 錯誤:", error); geminiResultsDiv.innerText = `發生錯誤：\n${error.message}`; } };
 
     // --- 事件綁定 ---
-    addUserForm.addEventListener('submit', addUser);
-    // ... 其他事件綁定 ...
+    signOutBtn.addEventListener('click', F_signOut);
+    sidebarToggleBtn.addEventListener('click', () => { appContainer.classList.toggle('sidebar-collapsed'); });
+    navLinks.forEach(link => {
+        link.addEventListener('click', (e) => {
+            e.preventDefault();
+            const viewName = link.getAttribute('data-view');
+            F_switchView(viewName);
+        });
+    });
+    profileAvatar.addEventListener('click', () => avatarUploader.click());
+    avatarUploader.addEventListener('change', F_uploadAvatar);
+    saveProfileBtn.addEventListener('click', F_updateProfile);
+    updatePasswordBtn.addEventListener('click', F_updatePassword);
+    geminiSearchForm.addEventListener('submit', F_handleGeminiSearch);
 
-    // --- 核心邏輯 ---
-    _supabase.auth.onAuthStateChange(async (event, session) => {
+    // --- 核心邏輯 (穩定版) ---
+    _supabase.auth.onAuthStateChange((event, session) => {
         if (event === 'INITIAL_SESSION') {
-            const loadingOverlay = document.getElementById('loading-overlay');
-            if(loadingOverlay) loadingOverlay.style.display = 'none';
-            
+            loadingOverlay.style.display = 'none';
             if (session && session.user) {
-                const { data: profile } = await _supabase
-                    .from('profiles')
-                    .select('id')
-                    .eq('id', session.user.id)
-                    .single();
-                
-                if (profile) {
-                    const appContainer = document.querySelector('.app-container');
-                    if(appContainer) appContainer.style.display = 'flex';
-                    loadUserProfile(session.user);
-                    switchView('home');
-                    fetchWeatherForecast();
-                } else {
-                    alert('您的帳號尚未被授權，請聯絡管理員。');
-                    await _supabase.auth.signOut();
-                    window.location.href = `${window.location.origin}/index.html`;
-                }
+                appContainer.style.display = 'flex';
+                F_loadUserProfile(session.user);
+                F_switchView('home');
+                fetchGoogleWeather(); // 改為呼叫 Google Weather API
             } else {
                 window.location.href = `${window.location.origin}/index.html`;
             }
-        } else if (event === 'SIGNED_IN') {
-             window.location.reload();
         } else if (event === 'SIGNED_OUT') {
             window.location.href = `${window.location.origin}/index.html`;
+        } else if (event === 'USER_UPDATED' && session && session.user) {
+            F_loadUserProfile(session.user);
         }
     });
 });
 </script>
-</body>
-</html>
-```
-
-```html
-<!DOCTYPE html>
-<html lang="zh-Hant">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>內部共用平台 - 登入</title>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <style>
-        /* ... CSS 樣式 (與上一版相同) ... */
-    </style>
-</head>
-<body>
-
-<div class="container" style="display: none;">
-    <div id="auth-view">
-        <h2>內部平台登入</h2>
-        <input type="email" id="email" placeholder="電子郵件" required />
-        <input type="password" id="password" placeholder="密碼" required />
-        <button id="signin-btn">用密碼登入</button>
-        <a href="#" id="forgot-password-link" style="display: block; margin-top: 10px;">忘記密碼？</a>
-        <hr>
-        <button id="signup-btn">註冊新帳號</button>
-        <button id="google-btn">用 Google 帳號登入</button>
-    </div>
-    <div id="message"></div>
-</div>
-
-<script>
-document.addEventListener('DOMContentLoaded', () => {
-    // --- 初始化設定 ---
-    const SUPABASE_URL = 'https://wvdfuqvebqolvpwhdelg.supabase.co';
-    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind2ZGZ1cXZlYnFvbHZwd2hkZWxnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTIyMzA0MjksImV4cCI6MjA2NzgwNjQyOX0.0VAgxyaoyeFeNbto9pUchwqQVqvHzCzyC22wXb01OKU';
-    const { createClient } = supabase;
-    const _supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-    // --- 取得頁面元素 ---
-    const container = document.querySelector('.container');
-    const emailInput = document.getElementById('email');
-    const passwordInput = document.getElementById('password');
-    const messageDiv = document.getElementById('message');
-
-    // --- 認證功能函式 ---
-    const signUp = async () => {
-        messageDiv.innerText = "處理中...";
-        const { data, error } = await _supabase.auth.signUp({ email: emailInput.value, password: passwordInput.value });
-        if (error) {
-            messageDiv.innerText = '註冊失敗: ' + error.message;
-        } else {
-            messageDiv.innerText = "";
-            alert('註冊成功！但您的帳號需要管理員授權後才能登入。');
-        }
-    };
-
-    const signInWithPassword = async () => {
-        messageDiv.innerText = "登入中...";
-        const { error } = await _supabase.auth.signInWithPassword({ email: emailInput.value, password: passwordInput.value });
-        if (error) {
-            messageDiv.innerText = '登入失敗: ' + error.message;
-        }
-    };
-
-    const signInWithGoogle = async () => {
-        await _supabase.auth.signInWithOAuth({ provider: 'google' });
-    };
-
-    const forgotPassword = async () => {
-        const email = prompt("請輸入您註冊的電子郵件地址：");
-        if (!email) return; 
-        const resetUrl = new URL('reset.html', window.location.href).href;
-        messageDiv.innerText = "正在發送密碼重設郵件...";
-        const { error } = await _supabase.auth.resetPasswordForEmail(email, { redirectTo: resetUrl });
-        if (error) { messageDiv.innerText = "錯誤：" + error.message; }
-        else { messageDiv.innerText = ""; alert("密碼重設郵件已成功寄出，請檢查您的信箱。"); }
-    };
-    
-    // --- 事件綁定 ---
-    document.getElementById('signin-btn').addEventListener('click', signInWithPassword);
-    document.getElementById('signup-btn').addEventListener('click', signUp);
-    document.getElementById('google-btn').addEventListener('click', signInWithGoogle);
-    document.getElementById('forgot-password-link').addEventListener('click', forgotPassword);
-
-    // --- 核心：監聽認證狀態變化 (穩定版) ---
-    _supabase.auth.onAuthStateChange((event, session) => {
-        if (event === 'INITIAL_SESSION') {
-            if (session) {
-                window.location.href = `${window.location.origin}/app.html`;
-            } else {
-                container.style.display = 'block';
-            }
-        } else if (event === 'SIGNED_IN') {
-             window.location.href = `${window.location.origin}/app.html`;
-        }
-    });
-});
-</script>
-
 </body>
 </html>
