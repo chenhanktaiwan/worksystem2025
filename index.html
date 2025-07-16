@@ -56,7 +56,7 @@ document.addEventListener('DOMContentLoaded', () => {
         messageDiv.innerText = "處理中...";
         const { error } = await _supabase.auth.signUp({ email: emailInput.value, password: passwordInput.value });
         if (error) { messageDiv.innerText = '註冊失敗: ' + error.message; }
-        else { messageDiv.innerText = ""; alert('註冊成功！請檢查您的信箱以完成驗證。'); }
+        else { messageDiv.innerText = ""; alert('註冊成功！但您的帳號需要管理員授權後才能登入。'); }
     };
     const signInWithPassword = async () => {
         messageDiv.innerText = "登入中...";
@@ -64,7 +64,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (error) { messageDiv.innerText = '登入失敗: ' + error.message; }
     };
     const signInWithGoogle = async () => {
-        messageDiv.innerText = "";
         await _supabase.auth.signInWithOAuth({ provider: 'google' });
     };
     const forgotPassword = async () => {
