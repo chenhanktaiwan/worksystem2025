@@ -5,32 +5,28 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>我的應用程式</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <!-- Google Maps API 腳本 -->
-    <script async src="https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_MAPS_API_KEY&callback=initMap&libraries=places,marker&loading=async"></script>
+    <script async src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBfAUYXPVz9lqN5QPyzcNmeCg5ect9ZNcA&callback=initMap&libraries=places,marker&loading=async"></script>
     <style>
         /* 全局與佈局 */
         :root { --header-height: 60px; }
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans TC", sans-serif; margin: 0; background-color: #f4f7f9; }
-        .app-wrapper { display: none; } /* 預設隱藏整個 app */
         .app-container { display: flex; flex-direction: column; height: 100vh; }
 
         /* 載入中覆蓋層 */
-        #loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: #f4f7f9; display: flex; justify-content: center; align-items: center; font-size: 1.2rem; color: #2c3e50; z-index: 9999; flex-direction: column; gap: 20px; }
-        .spinner { border: 5px solid #f3f3f3; border-top: 5px solid #3498db; border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        #loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: #f4f7f9; display: flex; justify-content: center; align-items: center; font-size: 1.2rem; color: #2c3e50; z-index: 9999; }
 
         /* 頂部導覽列 */
         .top-nav { height: var(--header-height); background-color: #2c3e50; color: white; display: flex; align-items: center; justify-content: space-between; padding: 0 1.5rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1); position: fixed; top: 0; left: 0; right: 0; z-index: 1000; }
         .nav-left { display: flex; align-items: center; gap: 1rem; }
         .nav-center { display: flex; justify-content: center; flex-grow: 1; }
         .nav-right { display: flex; align-items: center; }
-        .main-title { font-family: "Microsoft JhengHei", "微軟正黑體", sans-serif; font-size: 1.5rem; font-weight: bold; color: #fff; text-decoration: none; cursor: pointer; }
+        .main-title { font-family: "Microsoft JhengHei", "微軟正黑體", sans-serif; font-size: 1.5rem; font-weight: bold; color: #fff; text-decoration: none; }
         .nav-links { list-style: none; padding: 0; margin: 0; display: flex; gap: 1rem; }
-        .nav-links a { color: #ecf0f1; text-decoration: none; padding: 0.5rem 1rem; border-radius: 4px; transition: background-color 0.2s; cursor: pointer; }
+        .nav-links a { color: #ecf0f1; text-decoration: none; padding: 0.5rem 1rem; border-radius: 4px; transition: background-color 0.2s; }
         .nav-links a:hover { background-color: #34495e; }
         .nav-links a.active { background-color: #1abc9c; font-weight: bold; }
         .user-menu { position: relative; }
-        .user-avatar { width: 40px; height: 40px; border-radius: 50%; cursor: pointer; border: 2px solid #34495e; object-fit: cover; }
+        .user-avatar { width: 40px; height: 40px; border-radius: 50%; cursor: pointer; border: 2px solid #34495e; }
         .dropdown-menu { display: none; position: absolute; right: 0; top: 50px; background-color: white; border-radius: 8px; box-shadow: 0 8px 16px rgba(0,0,0,0.2); z-index: 1; min-width: 160px; overflow: hidden; }
         .dropdown-menu.show { display: block; }
         .dropdown-menu a, .dropdown-menu button { color: black; padding: 12px 16px; text-decoration: none; display: block; background: none; border: none; width: 100%; text-align: left; cursor: pointer; font-size: 1em; }
@@ -43,31 +39,52 @@
         /* 主要內容區 */
         .content-area { flex-grow: 1; padding: 2rem; overflow-y: auto; margin-top: var(--header-height); }
         .view { display: none; }
-        .view.active { display: block; animation: fadeIn 0.5s; }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .view.active { display: block; }
         
-        /* 表單與通用元件 */
+        /* 其他樣式 */
         .form-container { background: white; padding: 2.5rem; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); max-width: 600px; margin: auto; }
         h3, h4 { color: #343a40; }
         label { display: block; margin-top: 1rem; margin-bottom: 5px; font-weight: bold; color: #495057; }
         input[type="text"], input[type="password"], input[type="email"], textarea { width: 100%; padding: 12px; margin-bottom: 12px; border: 1px solid #ced4da; border-radius: 4px; box-sizing: border-box; font-size: 1em; }
-        button { width: 100%; padding: 12px; margin-top: 10px; border: none; border-radius: 4px; color: white; font-weight: bold; cursor: pointer; font-size: 1em; transition: background-color 0.2s; }
-        button:hover { opacity: 0.9; }
+        button { width: 100%; padding: 12px; margin-top: 10px; border: none; border-radius: 4px; color: white; font-weight: bold; cursor: pointer; font-size: 1em; }
         #save-profile-btn, #add-user-btn { background-color: #007bff; }
         #update-password-btn { background-color: #17a2b8; }
-        #signout-btn-dropdown { background-color: #e74c3c; }
-        #message, #admin-message { margin-top: 15px; font-weight: bold; min-height: 1.2em; text-align: center; }
+        #signout-btn { background-color: #e74c3c; }
+        #message { margin-top: 15px; font-weight: bold; min-height: 1.2em; text-align: center; }
         hr { border: 0; border-top: 1px solid #dee2e6; margin: 20px 0; }
         .page-title { font-family: "Microsoft JhengHei", "微軟正黑體", sans-serif; font-size: 20pt; font-weight: bold; text-align: center; color: #2c3e50; margin-top: 0; margin-bottom: 1rem; }
         .title-divider { border: 0; border-top: 1px solid #e0e0e0; margin-bottom: 2rem; }
-
-        /* 首頁儀表板 */
+        .dashboard-grid { display: flex; flex-wrap: wrap; gap: 2rem; align-items: stretch; }
+        .dashboard-item { flex: 1; min-width: 300px; display: flex; flex-direction: column; }
+        .weather-widget { background: #2D9CDB; color: white; border-radius: 8px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); font-family: "Microsoft JhengHei", "微軟正黑體", sans-serif; flex-grow: 1; }
+        .weather-today { display: flex; justify-content: space-between; align-items: center; padding-bottom: 15px; border-bottom: 1px solid rgba(255, 255, 255, 0.3); }
+        .weather-today-main { display: flex; align-items: center; gap: 15px; }
+        .weather-today-icon { font-size: 3.5rem; line-height: 1; }
+        .weather-today-details .condition { font-size: 1.2rem; font-weight: bold; }
+        .weather-today-details .pop { font-size: 0.9rem; opacity: 0.9; }
+        .weather-today-temp { font-size: 2rem; font-weight: bold; line-height: 1; }
+        .weather-today-location { font-size: 1.2rem; font-weight: bold; text-align: right; }
+        .weather-forecast { display: flex; justify-content: space-between; padding-top: 15px; overflow-x: auto; }
+        .forecast-day { text-align: center; flex: 1; min-width: 60px; padding: 0 5px; }
+        .forecast-day .date { font-size: 0.8rem; font-weight: bold; }
+        .forecast-day .icon { font-size: 2rem; margin: 8px 0; }
+        .forecast-day .temp { font-size: 1rem; font-weight: bold; }
+        .forecast-day .pop { font-size: 0.8em; opacity: 0.8; margin-top: 4px;}
+        .search-widget { background: #ffffff; border-radius: 8px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        .search-widget h4 { margin-top: 0; margin-bottom: 15px; color: #343a40; text-align: center; }
+        .search-form { display: flex; gap: 10px; }
+        .search-form input[type="text"] { flex-grow: 1; margin-bottom: 0; }
+        .search-form button { margin-top: 0; width: auto; padding: 0 20px; }
+        #google-search-btn { background-color: #4285F4; }
+        #gemini-search-btn { background-color: #8E44AD; }
+        .gemini-widget { margin-top: 2rem; }
+        #gemini-results { margin-top: 1rem; padding: 15px; border: 1px solid #e0e0e0; border-radius: 8px; background-color: #f9f9f9; min-height: 150px; max-height: 250px; overflow-y: auto; white-space: pre-wrap; text-align: left; }
+        .loading-spinner { border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; margin: 10px auto; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        #map-container { margin-top: 2rem; position: relative; }
         #map { height: 400px; width: 100%; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
-
-        /* 個人資料頁 */
-        #profile-avatar-preview { width: 120px; height: 120px; border-radius: 50%; object-fit: cover; cursor: pointer; border: 3px solid #ddd; }
-
-        /* 使用者管理頁 */
+        #pac-container { position: absolute; top: 10px; left: 10px; z-index: 10; }
+        gmp-place-autocomplete { width: 300px; }
         .user-management-container { display: flex; gap: 2rem; flex-wrap: wrap; }
         .user-list, .add-user-form { flex: 1; min-width: 300px; background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
         .user-list ul { list-style: none; padding: 0; }
@@ -76,7 +93,6 @@
         .user-list .user-email { color: #333; }
         .user-list .user-role { background-color: #eee; color: #555; padding: 3px 8px; border-radius: 12px; font-size: 0.8em; }
 
-        /* 響應式設計 */
         @media (max-width: 768px) {
             .nav-center { display: none; }
             .hamburger-menu { display: block; }
@@ -86,405 +102,248 @@
 </head>
 <body>
 
-<!-- 載入中畫面 -->
-<div id="loading-overlay">
-    <div class="spinner"></div>
-    <p>載入中，請稍候...</p>
-</div>
+<div id="loading-overlay">載入中...</div>
 
-<!-- 主要應用程式容器 (預設隱藏) -->
-<div id="app-page" class="app-wrapper">
-    <div class="app-container">
-        <!-- 頂部導覽列 -->
-        <header class="top-nav">
-            <div class="nav-left">
-                <div class="hamburger-menu" id="hamburger-menu">☰</div>
-                <a href="#" class="main-title" data-view="home">我的工作站</a>
-            </div>
-            <nav class="nav-center">
-                <ul class="nav-links" id="main-nav-links">
-                    <li><a href="#" class="nav-link active" data-view="home">個人首頁</a></li>
-                    <li><a href="#" class="nav-link" data-view="calendar">行事曆</a></li>
-                    <li><a href="#" class="nav-link" data-view="chat">聊天</a></li>
-                </ul>
-            </nav>
-            <div class="nav-right">
-                <div class="user-menu">
-                    <img id="user-avatar" class="user-avatar" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="User Avatar">
-                    <div class="dropdown-menu" id="user-dropdown">
-                        <a href="#" class="dropdown-link" data-view="profile">個人管理後台</a>
-                        <a href="#" class="dropdown-link" data-view="user-management" id="user-management-link" style="display: none;">使用者管理</a>
-                        <hr style="margin: 5px 0;">
-                        <button id="signout-btn-dropdown">登出</button>
-                    </div>
+<div id="app-page" class="app-container" style="display: none;">
+    <header class="top-nav">
+        <div class="nav-left">
+            <div class="hamburger-menu" id="hamburger-menu">☰</div>
+            <a href="#" class="main-title" data-view="home">我的工作站</a>
+        </div>
+        <nav class="nav-center">
+            <ul class="nav-links">
+                <li><a href="#" class="nav-link active" data-view="home">個人首頁</a></li>
+                <li><a href="#" class="nav-link" data-view="calendar">行事曆</a></li>
+                <li><a href="#" class="nav-link" data-view="chat">聊天</a></li>
+            </ul>
+        </nav>
+        <div class="nav-right">
+            <div class="user-menu">
+                <img id="user-avatar" class="user-avatar" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="User Avatar">
+                <div class="dropdown-menu" id="user-dropdown">
+                    <a href="#" class="nav-link" data-view="profile">個人管理後台</a>
+                    <a href="#" class="nav-link" data-view="user-management" id="user-management-link" style="display: none;">使用者管理</a>
+                    <hr style="margin: 5px 0;">
+                    <button id="signout-btn">登出</button>
                 </div>
             </div>
-        </header>
-        
-        <!-- 手機版導覽列 -->
-        <ul class="mobile-nav-links" id="mobile-nav-links">
-            <li><a href="#" class="nav-link" data-view="home">個人首頁</a></li>
-            <li><a href="#" class="nav-link" data-view="calendar">行事曆</a></li>
-            <li><a href="#" class="nav-link" data-view="chat">聊天</a></li>
-            <li><a href="#" class="dropdown-link" data-view="profile">個人管理後台</a></li>
-            <li id="mobile-user-management-link" style="display: none;"><a href="#" class="dropdown-link" data-view="user-management">使用者管理</a></li>
-        </ul>
+        </div>
+    </header>
+    
+    <ul class="mobile-nav-links" id="mobile-nav-links">
+        <li><a href="#" class="nav-link active" data-view="home">個人首頁</a></li>
+        <li><a href="#" class="nav-link" data-view="calendar">行事曆</a></li>
+        <li><a href="#" class="nav-link" data-view="chat">聊天</a></li>
+    </ul>
 
-        <!-- 主要內容區域 -->
-        <main class="content-area">
-            <!-- 首頁 -->
-            <div id="home-view" class="view">
-                 <h1 class="page-title">個人首頁</h1>
-                 <hr class="title-divider">
-                 <p>歡迎回來！這裡是您的個人化儀表板。</p>
-                 <div id="map"></div>
-            </div>
-            <!-- 行事曆 -->
-            <div id="calendar-view" class="view">
-                <h1 class="page-title">行事曆</h1><hr class="title-divider"><p>此處將放置行事曆功能。</p>
-            </div>
-            <!-- 聊天 -->
-            <div id="chat-view" class="view">
-                <h1 class="page-title">聊天</h1><hr class="title-divider"><p>此處將放置聊天室功能。</p>
-            </div>
-            <!-- 個人資料管理 -->
-            <div id="profile-view" class="view">
-                <div class="form-container">
-                    <h3 style="text-align:center;">個人管理後台</h3>
-                    <div style="text-align:center; margin-bottom: 1.5rem;">
-                        <img id="profile-avatar-preview" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="大頭貼預覽" title="點擊更換大頭貼">
-                        <input type="file" id="avatar-uploader" accept="image/png, image/jpeg" style="display: none;">
-                    </div>
-                    <label for="nickname">暱稱</label>
-                    <input type="text" id="nickname" placeholder="您的暱稱">
-                    <label for="bio">個人簡介</label>
-                    <textarea id="bio" rows="4" placeholder="關於您自己..."></textarea>
-                    <button id="save-profile-btn">儲存個人資料</button>
-                    <hr>
-                    <label for="new-password">變更密碼</label>
-                    <input type="password" id="new-password" placeholder="輸入新密碼 (至少6個字元)">
-                    <button id="update-password-btn">更新密碼</button>
-                    <div id="message"></div>
-                </div>
-            </div>
-            <!-- 使用者管理 (僅限管理員) -->
-            <div id="user-management-view" class="view">
-                <h1 class="page-title">使用者管理</h1><hr class="title-divider">
-                <div class="user-management-container">
-                    <div class="add-user-form">
-                        <h4>新增授權使用者</h4>
-                        <form id="add-user-form-element">
-                            <label for="new-user-email">使用者 Email</label>
-                            <input type="email" id="new-user-email" placeholder="輸入要授權的 Email" required>
-                            <button id="add-user-btn" type="submit">新增使用者</button>
-                            <div id="admin-message"></div>
-                        </form>
-                    </div>
-                    <div class="user-list">
-                        <h4>已授權使用者列表</h4>
-                        <ul id="authorized-user-list"><li>載入中...</li></ul>
-                    </div>
-                </div>
-            </div>
-        </main>
-    </div>
+    <main class="content-area">
+        <!-- 內容視圖... -->
+    </main>
 </div>
 
 <script>
-    // Google Maps 初始化回呼函式
-    function initMap() {
-        const taipei = { lat: 25.034, lng: 121.564 };
-        const map = new google.maps.Map(document.getElementById("map"), {
-            center: taipei,
-            zoom: 12,
-            mapId: "YOUR_MAP_ID" // 建議使用 Map ID
-        });
-        new google.maps.Marker({
-            position: taipei,
-            map,
-            title: "台北101",
-        });
-    }
+    async function initMap() { /* ... */ }
     window.initMap = initMap;
 </script>
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-    // --- 1. 初始化與設定 ---
+    // --- 初始化與取得元素 ---
+    const SUPABASE_URL = 'https://wvdfuqvebqolvpwhdelg.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind2ZGZ1cXZlYnFvbHZwd2hkZWxnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTIyMzA0MjksImV4cCI6MjA2NzgwNjQyOX0.0VAgxyaoyeFeNbto9pUchwqQVqvHzCzyC22wXb01OKU';
+    const { createClient } = supabase;
+    const _supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    
+    const CWA_API_KEY = 'CWA-09CB4F50-2A02-4667-902A-3D2AFDFBB662'; 
+
+    const loadingOverlay = document.getElementById('loading-overlay');
+    const appContainer = document.querySelector('.app-container');
+    const navLinks = document.querySelectorAll('.nav-link');
+    const views = document.querySelectorAll('.view');
+    const userAvatar = document.getElementById('user-avatar');
+    const userDropdown = document.getElementById('user-dropdown');
+    const userMenu = document.querySelector('.user-menu');
+    const hamburgerMenu = document.getElementById('hamburger-menu');
+    const mobileNavLinks = document.getElementById('mobile-nav-links');
+    // ... 其他元素宣告 ...
+
+    let currentUserProfile = null;
+
+    // --- 功能函式 ---
+    const loadUserProfile = async (user) => {
+        // ...
+        const avatarUrl = user.user_metadata.avatar_url || 'data:image/svg+xml;base64,...';
+        userAvatar.src = avatarUrl;
+        // ...
+    };
+    
+    // ... 其他功能函式 ...
+
+    // --- 事件綁定 ---
+    userAvatar.addEventListener('click', () => {
+        userDropdown.classList.toggle('show');
+    });
+
+    hamburgerMenu.addEventListener('click', () => {
+        mobileNavLinks.classList.toggle('show');
+    });
+
+    document.querySelectorAll('.nav-link, .main-title').forEach(link => {
+        link.addEventListener('click', (e) => {
+            const viewName = e.currentTarget.getAttribute('data-view');
+            if (viewName) {
+                switchView(viewName);
+            }
+            userDropdown.classList.remove('show');
+            mobileNavLinks.classList.remove('show');
+        });
+    });
+
+    window.addEventListener('click', (event) => {
+        if (!userMenu.contains(event.target)) {
+            userDropdown.classList.remove('show');
+        }
+        if (!hamburgerMenu.contains(event.target) && !mobileNavLinks.contains(event.target)) {
+            mobileNavLinks.classList.remove('show');
+        }
+    });
+    
+    // ... 其他事件綁定 ...
+
+    // --- 核心邏輯 (穩定版) ---
+    _supabase.auth.onAuthStateChange(async (event, session) => {
+        if (event === 'INITIAL_SESSION') {
+            if (session && session.user) {
+                const { data: profile } = await _supabase.from('profiles').select('id').eq('id', session.user.id).single();
+                if (profile) {
+                    loadingOverlay.style.display = 'none';
+                    appContainer.style.display = 'flex';
+                    await loadUserProfile(session.user);
+                    switchView('home');
+                    fetchWeatherForecast();
+                } else {
+                    alert('您的帳號尚未被授權，請聯絡管理員。');
+                    await _supabase.auth.signOut();
+                    window.location.href = `${window.location.origin}/index.html`;
+                }
+            } else {
+                window.location.href = `${window.location.origin}/index.html`;
+            }
+        } else if (event === 'SIGNED_OUT') {
+            window.location.href = `${window.location.origin}/index.html`;
+        } else if (event === 'USER_UPDATED' && session && session.user) {
+            await loadUserProfile(session.user);
+        }
+    });
+});
+</script>
+</body>
+</html>
+```
+
+### 步驟二：更新您的 `index.html` 檔案
+
+為了確保兩個頁面的邏輯完全同步，避免任何可能的跳轉問題，也請您一併使用以下最新的 `index.html` 程式碼。
+
+
+```html
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>內部共用平台 - 登入</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans TC", sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; background-color: #f8f9fa; margin: 0; }
+        .container { background: white; padding: 2.5rem; border-radius: 8px; box-shadow: 0 8px 30px rgba(0,0,0,0.1); text-align: center; width: 380px; box-sizing: border-box; }
+        h2 { color: #343a40; margin-top: 0; margin-bottom: 1.5rem; }
+        a { color: #007bff; text-decoration: none; font-size: 0.9em; }
+        a:hover { text-decoration: underline; }
+        input { width: 100%; padding: 12px; margin-bottom: 12px; border: 1px solid #ced4da; border-radius: 4px; box-sizing: border-box; font-size: 1em; }
+        button { width: 100%; padding: 12px; margin-bottom: 10px; border: none; border-radius: 4px; color: white; font-weight: bold; cursor: pointer; font-size: 1em; transition: opacity 0.2s; }
+        button:hover { opacity: 0.85; }
+        #signup-btn { background-color: #28a745; }
+        #signin-btn { background-color: #007bff; }
+        #google-btn { background-color: #db4437; }
+        hr { border: 0; border-top: 1px solid #dee2e6; margin: 20px 0; }
+        #message { margin-top: 15px; color: #dc3545; font-weight: bold; min-height: 1.2em;}
+    </style>
+</head>
+<body>
+
+<div class="container" style="display: none;">
+    <div id="auth-view">
+        <h2>內部平台登入</h2>
+        <input type="email" id="email" placeholder="電子郵件" required />
+        <input type="password" id="password" placeholder="密碼" required />
+        <button id="signin-btn">用密碼登入</button>
+        <a href="#" id="forgot-password-link" style="display: block; margin-top: 10px;">忘記密碼？</a>
+        <hr>
+        <button id="signup-btn">註冊新帳號</button>
+        <button id="google-btn">用 Google 帳號登入</button>
+    </div>
+    <div id="message"></div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    // --- 1. 初始化設定 ---
     const SUPABASE_URL = 'https://wvdfuqvebqolvpwhdelg.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind2ZGZ1cXZlYnFvbHZwd2hkZWxnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTIyMzA0MjksImV4cCI6MjA2NzgwNjQyOX0.0VAgxyaoyeFeNbto9pUchwqQVqvHzCzyC22wXb01OKU';
     const { createClient } = supabase;
     const _supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     // --- 2. 取得頁面元素 ---
-    const loadingOverlay = document.getElementById('loading-overlay');
-    const appPage = document.getElementById('app-page');
+    const container = document.querySelector('.container');
+    const emailInput = document.getElementById('email');
+    const passwordInput = document.getElementById('password');
     const messageDiv = document.getElementById('message');
-    const adminMessageDiv = document.getElementById('admin-message');
-    const userAvatar = document.getElementById('user-avatar');
-    const userDropdown = document.getElementById('user-dropdown');
-    
-    let currentUser = null;
-    let userProfile = null;
 
-    // --- 3. 核心功能：檢查認證與初始化應用程式 ---
-    const initializeApp = async () => {
-        const { data: { session }, error: sessionError } = await _supabase.auth.getSession();
-
-        if (sessionError || !session) {
-            // 若沒有 session 或發生錯誤，重定向到登入頁面
-            window.location.href = `${window.location.origin}/index.html`;
-            return;
-        }
-
-        currentUser = session.user;
-
-        // 獲取使用者設定檔 (profiles)
-        const { data, error } = await _supabase
-            .from('profiles')
-            .select('nickname, bio, avatar_url, role')
-            .eq('id', currentUser.id)
-            .single();
-        
-        if (error && error.code !== 'PGRST116') { // PGRST116: a single row was not returned
-            console.error('讀取個人資料時發生錯誤:', error);
-            // 即使讀取失敗，也繼續顯示頁面，但功能會受限
-        } else {
-            userProfile = data;
-        }
-
-        // 更新 UI
-        updateUI();
-
-        // 綁定所有事件監聽器
-        bindEventListeners();
-
-        // 所有東西都準備好了，顯示 APP
-        loadingOverlay.style.display = 'none';
-        appPage.style.display = 'block';
-        
-        // 預設顯示首頁
-        switchView('home');
+    // --- 3. 認證功能函式 ---
+    const signUp = async () => {
+        messageDiv.innerText = "處理中...";
+        const { error } = await _supabase.auth.signUp({ email: emailInput.value, password: passwordInput.value });
+        if (error) { messageDiv.innerText = '註冊失敗: ' + error.message; }
+        else { messageDiv.innerText = ""; alert('註冊成功！但您的帳號需要管理員授權後才能登入。'); }
     };
-
-    // --- 4. UI 更新功能 ---
-    const updateUI = () => {
-        // 更新大頭貼 (如果沒有頭像，使用一個預設的 SVG)
-        const defaultAvatar = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%23e0e0e0'/%3E%3Ctext x='50' y='55' font-family='Arial' font-size='40' fill='%23757575' text-anchor='middle' dominant-baseline='middle'%3E${currentUser.email[0].toUpperCase()}%3C/text%3E%3C/svg%3E`;
-        const avatarUrl = userProfile?.avatar_url || defaultAvatar;
-        document.querySelectorAll('#user-avatar, #profile-avatar-preview').forEach(img => img.src = avatarUrl);
-        
-        // 更新個人資料表單
-        if(userProfile) {
-            document.getElementById('nickname').value = userProfile.nickname || '';
-            document.getElementById('bio').value = userProfile.bio || '';
-        }
-
-        // 檢查是否為管理員 (admin)，並顯示對應功能
-        if (userProfile?.role === 'admin') {
-            document.getElementById('user-management-link').style.display = 'block';
-            document.getElementById('mobile-user-management-link').style.display = 'block';
-            loadAuthorizedUsers(); // 載入使用者列表
-        }
+    const signInWithPassword = async () => {
+        messageDiv.innerText = "登入中...";
+        const { error } = await _supabase.auth.signInWithPassword({ email: emailInput.value, password: passwordInput.value });
+        if (error) { messageDiv.innerText = '登入失敗: ' + error.message; }
     };
-
-    // --- 5. 事件綁定 ---
-    const bindEventListeners = () => {
-        // 登出按鈕
-        document.getElementById('signout-btn-dropdown').addEventListener('click', signOutUser);
-
-        // 大頭貼下拉選單
-        userAvatar.addEventListener('click', (e) => {
-            e.stopPropagation(); // 防止觸發 window 的點擊事件
-            userDropdown.classList.toggle('show');
-        });
-        window.addEventListener('click', () => { // 點擊頁面其他地方關閉選單
-            if (userDropdown.classList.contains('show')) {
-                userDropdown.classList.remove('show');
-            }
-        });
-
-        // 頁面切換 (導覽列與下拉選單)
-        document.querySelectorAll('.nav-link, .dropdown-link, .main-title').forEach(link => {
-            link.addEventListener('click', (e) => {
-                e.preventDefault();
-                const viewName = e.currentTarget.dataset.view;
-                if (viewName) {
-                    switchView(viewName);
-                    // 關閉可能開啟的選單
-                    userDropdown.classList.remove('show');
-                    document.getElementById('mobile-nav-links').classList.remove('show');
-                }
-            });
-        });
-        
-        // 手機版漢堡選單
-        document.getElementById('hamburger-menu').addEventListener('click', () => {
-             document.getElementById('mobile-nav-links').classList.toggle('show');
-        });
-
-        // 個人資料區
-        document.getElementById('save-profile-btn').addEventListener('click', saveProfile);
-        document.getElementById('update-password-btn').addEventListener('click', updateUserPassword);
-        document.getElementById('profile-avatar-preview').addEventListener('click', () => document.getElementById('avatar-uploader').click());
-        document.getElementById('avatar-uploader').addEventListener('change', uploadAvatar);
-
-        // 管理員區
-        const addUserForm = document.getElementById('add-user-form-element');
-        if (addUserForm) {
-            addUserForm.addEventListener('submit', addAuthorizedUser);
-        }
+    const signInWithGoogle = async () => {
+        await _supabase.auth.signInWithOAuth({ provider: 'google' });
     };
-
-    // --- 6. 功能函式 ---
-    
-    // 登出
-    const signOutUser = async () => {
-        await _supabase.auth.signOut();
-        // onAuthStateChange 會自動監聽到變化並處理跳轉
-    };
-
-    // 儲存個人資料
-    const saveProfile = async () => {
-        const nickname = document.getElementById('nickname').value;
-        const bio = document.getElementById('bio').value;
-        messageDiv.innerText = '儲存中...';
-
-        const { error } = await _supabase
-            .from('profiles')
-            .upsert({ id: currentUser.id, nickname, bio, updated_at: new Date() });
-
-        if (error) {
-            messageDiv.innerText = '更新失敗: ' + error.message;
-            console.error('個人資料更新錯誤:', error);
-        } else {
-            messageDiv.innerText = '個人資料已成功儲存！';
-            // 重新讀取資料以更新 UI
-            const { data } = await _supabase.from('profiles').select('*').eq('id', currentUser.id).single();
-            userProfile = data;
-            updateUI();
-        }
-    };
-
-    // 更新密碼
-    const updateUserPassword = async () => {
-        const newPassword = document.getElementById('new-password').value;
-        if (!newPassword || newPassword.length < 6) {
-            messageDiv.innerText = '密碼長度至少需要 6 個字元。';
-            return;
-        }
-        messageDiv.innerText = '更新中...';
-        const { error } = await _supabase.auth.updateUser({ password: newPassword });
-        if (error) {
-            messageDiv.innerText = '密碼更新失敗: ' + error.message;
-        } else {
-            messageDiv.innerText = '密碼已成功更新！';
-            document.getElementById('new-password').value = '';
-        }
-    };
-
-    // 上傳大頭貼
-    const uploadAvatar = async (event) => {
-        const file = event.target.files[0];
-        if (!file) return;
-
-        messageDiv.innerText = '頭像上傳中...';
-        const filePath = `${currentUser.id}/${Date.now()}_${file.name}`;
-        
-        // 上傳到 Supabase Storage (假設您有一個名為 'avatars' 的 bucket)
-        const { error: uploadError } = await _supabase.storage
-            .from('avatars')
-            .upload(filePath, file);
-
-        if (uploadError) {
-            messageDiv.innerText = '上傳失敗: ' + uploadError.message;
-            console.error('頭像上傳錯誤:', uploadError);
-            return;
-        }
-
-        // 獲取公開的 URL
-        const { data } = _supabase.storage.from('avatars').getPublicUrl(filePath);
-        const publicURL = data.publicUrl;
-
-        // 更新 profiles 表中的 avatar_url
-        const { error: updateError } = await _supabase
-            .from('profiles')
-            .update({ avatar_url: publicURL, updated_at: new Date() })
-            .eq('id', currentUser.id);
-
-        if (updateError) {
-            messageDiv.innerText = '更新頭像記錄失敗: ' + updateError.message;
-        } else {
-            messageDiv.innerText = '頭像已更新！';
-            userProfile.avatar_url = publicURL; // 直接更新本地資料
-            updateUI(); // 更新畫面
-        }
+    const forgotPassword = async () => {
+        const email = prompt("請輸入您註冊的電子郵件地址：");
+        if (!email) return; 
+        const resetUrl = `${window.location.origin}/reset.html`;
+        messageDiv.innerText = "正在發送密碼重設郵件...";
+        const { error } = await _supabase.auth.resetPasswordForEmail(email, { redirectTo: resetUrl });
+        if (error) { messageDiv.innerText = "錯誤：" + error.message; }
+        else { messageDiv.innerText = ""; alert("密碼重設郵件已成功寄出，請檢查您的信箱。"); }
     };
     
-    // 切換視圖
-    const switchView = (viewName) => {
-        document.querySelectorAll('.view').forEach(view => view.classList.remove('active'));
-        const activeView = document.getElementById(`${viewName}-view`);
-        if (activeView) {
-            activeView.classList.add('active');
-        }
+    // --- 4. 事件綁定 ---
+    document.getElementById('signin-btn').addEventListener('click', signInWithPassword);
+    document.getElementById('signup-btn').addEventListener('click', signUp);
+    document.getElementById('google-btn').addEventListener('click', signInWithGoogle);
+    document.getElementById('forgot-password-link').addEventListener('click', forgotPassword);
 
-        document.querySelectorAll('.nav-links a, .mobile-nav-links a').forEach(link => {
-            link.classList.remove('active');
-            if (link.dataset.view === viewName) {
-                link.classList.add('active');
-            }
-        });
-    };
-
-    // --- 7. 管理員功能 ---
-    
-    // 載入已授權使用者列表
-    const loadAuthorizedUsers = async () => {
-        // 這裡假設您有一個 'authorized_users' 表，或是在 'profiles' 表中有個欄位來判斷
-        // 為了範例簡單，我們直接讀取所有 profiles
-        const { data, error } = await _supabase.from('profiles').select('id, nickname, role');
-        if (error) {
-            console.error('讀取使用者列表錯誤:', error);
-            return;
-        }
-        const userList = document.getElementById('authorized-user-list');
-        userList.innerHTML = ''; // 清空
-        data.forEach(user => {
-            const li = document.createElement('li');
-            li.innerHTML = `
-                <span class="user-email">${user.nickname || user.id}</span>
-                <span class="user-role">${user.role || 'user'}</span>
-            `;
-            userList.appendChild(li);
-        });
-    };
-
-    // 新增授權使用者 (這裡僅為前端示意，後端需要搭配 Function 或 RLS)
-    const addAuthorizedUser = async (e) => {
-        e.preventDefault();
-        const email = document.getElementById('new-user-email').value;
-        adminMessageDiv.innerText = `處理中...`;
-        // **重要**: 邀請使用者或設定權限應該透過 Supabase Functions (Edge Function) 執行
-        // 以確保安全性。直接從客戶端操作有風險。
-        // 這裡只是一個示意。
-        adminMessageDiv.innerText = `邀請 ${email} 的功能需後端實現。`;
-        console.warn("新增使用者功能應在安全的後端環境中執行。");
-    };
-
-    // --- 8. 監聽認證狀態變化 & 執行初始化 ---
+    // --- 5. 核心：監聽認證狀態變化 (穩定版) ---
     _supabase.auth.onAuthStateChange((event, session) => {
-        if (event === 'SIGNED_OUT') {
-            // 如果使用者登出，跳轉到登入頁
-            window.location.href = `${window.location.origin}/index.html`;
-        } else if (event === 'SIGNED_IN' && !currentUser) {
-            // 如果是剛登入，重新初始化
-            initializeApp();
+        if (event === 'INITIAL_SESSION') {
+            if (session) {
+                window.location.href = `${window.location.origin}/app.html`;
+            } else {
+                // 只有在確認未登入後，才顯示登入表單
+                container.style.display = 'block';
+            }
+        } else if (event === 'SIGNED_IN') {
+             window.location.href = `${window.location.origin}/app.html`;
         }
     });
-
-    // 首次載入頁面時執行初始化
-    initializeApp();
 });
 </script>
 
