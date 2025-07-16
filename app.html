@@ -12,42 +12,25 @@
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans TC", sans-serif; margin: 0; background-color: #f4f7f9; }
         .app-container { display: flex; flex-direction: column; height: 100vh; }
 
-        /* 新增：載入中覆蓋層 */
-        #loading-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: #f4f7f9;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-size: 1.2rem;
-            color: #2c3e50;
-            z-index: 9999;
-        }
+        /* 載入中覆蓋層 */
+        #loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: #f4f7f9; display: flex; justify-content: center; align-items: center; font-size: 1.2rem; color: #2c3e50; z-index: 9999; }
 
         /* 頂部導覽列 */
         .top-nav { height: var(--header-height); background-color: #2c3e50; color: white; display: flex; align-items: center; justify-content: space-between; padding: 0 1.5rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1); position: fixed; top: 0; left: 0; right: 0; z-index: 1000; }
         .nav-left { display: flex; align-items: center; gap: 1rem; }
         .nav-center { display: flex; justify-content: center; flex-grow: 1; }
         .nav-right { display: flex; align-items: center; }
-        
         .main-title { font-family: "Microsoft JhengHei", "微軟正黑體", sans-serif; font-size: 1.5rem; font-weight: bold; color: #fff; text-decoration: none; }
-        
         .nav-links { list-style: none; padding: 0; margin: 0; display: flex; gap: 1rem; }
         .nav-links a { color: #ecf0f1; text-decoration: none; padding: 0.5rem 1rem; border-radius: 4px; transition: background-color 0.2s; }
         .nav-links a:hover { background-color: #34495e; }
         .nav-links a.active { background-color: #1abc9c; font-weight: bold; }
-
         .user-menu { position: relative; }
         .user-avatar { width: 40px; height: 40px; border-radius: 50%; cursor: pointer; border: 2px solid #34495e; }
         .dropdown-menu { display: none; position: absolute; right: 0; top: 50px; background-color: white; border-radius: 8px; box-shadow: 0 8px 16px rgba(0,0,0,0.2); z-index: 1; min-width: 160px; overflow: hidden; }
         .dropdown-menu.show { display: block; }
         .dropdown-menu a, .dropdown-menu button { color: black; padding: 12px 16px; text-decoration: none; display: block; background: none; border: none; width: 100%; text-align: left; cursor: pointer; font-size: 1em; }
         .dropdown-menu a:hover, .dropdown-menu button:hover { background-color: #f1f1f1; }
-        
         .hamburger-menu { display: none; font-size: 1.8rem; cursor: pointer; }
         .mobile-nav-links { display: none; position: absolute; top: var(--header-height); left: 0; right: 0; background-color: #34495e; list-style: none; padding: 0; margin: 0; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
         .mobile-nav-links.show { display: block; }
@@ -58,7 +41,7 @@
         .view { display: none; }
         .view.active { display: block; }
         
-        /* 其他樣式 (大部分與之前相同) */
+        /* 其他樣式 */
         .form-container { background: white; padding: 2.5rem; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); max-width: 600px; margin: auto; }
         h3, h4 { color: #343a40; }
         label { display: block; margin-top: 1rem; margin-bottom: 5px; font-weight: bold; color: #495057; }
@@ -102,6 +85,13 @@
         #map { height: 400px; width: 100%; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
         #pac-container { position: absolute; top: 10px; left: 10px; z-index: 10; }
         gmp-place-autocomplete { width: 300px; }
+        .user-management-container { display: flex; gap: 2rem; flex-wrap: wrap; }
+        .user-list, .add-user-form { flex: 1; min-width: 300px; background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        .user-list ul { list-style: none; padding: 0; }
+        .user-list li { display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 0; border-bottom: 1px solid #eee; }
+        .user-list li:last-child { border-bottom: none; }
+        .user-list .user-email { color: #333; }
+        .user-list .user-role { background-color: #eee; color: #555; padding: 3px 8px; border-radius: 12px; font-size: 0.8em; }
 
         @media (max-width: 768px) {
             .nav-center { display: none; }
@@ -223,12 +213,19 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- 核心邏輯 (穩定版) ---
     _supabase.auth.onAuthStateChange(async (event, session) => {
         if (event === 'INITIAL_SESSION') {
-            loadingOverlay.style.display = 'none';
             if (session && session.user) {
-                appContainer.style.display = 'flex';
-                await loadUserProfile(session.user);
-                switchView('home');
-                fetchWeatherForecast();
+                const { data: profile } = await _supabase.from('profiles').select('id').eq('id', session.user.id).single();
+                if (profile) {
+                    loadingOverlay.style.display = 'none';
+                    appContainer.style.display = 'flex';
+                    await loadUserProfile(session.user);
+                    switchView('home');
+                    fetchWeatherForecast();
+                } else {
+                    alert('您的帳號尚未被授權，請聯絡管理員。');
+                    await _supabase.auth.signOut();
+                    window.location.href = `${window.location.origin}/index.html`;
+                }
             } else {
                 window.location.href = `${window.location.origin}/index.html`;
             }
