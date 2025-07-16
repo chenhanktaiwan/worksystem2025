@@ -6,7 +6,6 @@
     <title>重設您的密碼</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        /* 這裡的樣式和 index.html 幾乎一樣，是為了讓兩個頁面風格統一 */
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans TC", sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; background-color: #f8f9fa; margin: 0; }
         .container { background: white; padding: 2.5rem; border-radius: 8px; box-shadow: 0 8px 30px rgba(0,0,0,0.1); text-align: center; width: 380px; box-sizing: border-box; }
         h3 { color: #343a40; }
@@ -58,19 +57,15 @@ document.addEventListener('DOMContentLoaded', () => {
             messageDiv.className = 'error';
             return;
         }
-
         messageDiv.innerText = "更新中...";
-        const { error } = await _supabase.auth.updateUser({
-            password: newPassword
-        });
-
+        const { error } = await _supabase.auth.updateUser({ password: newPassword });
         if (error) {
             messageDiv.innerText = '密碼更新失敗: ' + error.message;
             messageDiv.className = 'error';
         } else {
-            messageDiv.innerText = '密碼已成功更新！您現在可以關閉此頁面，回到登入頁重新登入。';
+            messageDiv.innerText = '密碼已成功更新！您可以關閉此頁面，回到登入頁。';
             messageDiv.className = 'success';
-            resetForm.style.display = 'none'; // 成功後隱藏表單
+            resetForm.style.display = 'none';
         }
     };
 
