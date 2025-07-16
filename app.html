@@ -322,7 +322,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const addUser = async (event) => { event.preventDefault(); const email = newUserEmailInput.value.trim(); if (!email) return; adminMessageDiv.innerText = '處理中...'; const { error } = await _supabase.from('profiles').insert({ email: email, role: 'member' }); if (error) { adminMessageDiv.innerText = `新增失敗: ${error.message}`; } else { adminMessageDiv.innerText = `已成功授權 ${email}！請該使用者用此 Email 註冊/登入。`; newUserEmailInput.value = ''; fetchUsers(); } };
     const getCwaWeatherIcon = (wxValue) => { const value = parseInt(wxValue, 10); if (value === 1) return '☀️'; if (value >= 2 && value <= 3) return '🌤️'; if (value >= 4 && value <= 7) return '☁️'; if (value >= 8 && value <= 22) return '🌧️'; if (value >= 23 && value <= 28) return '🌫️'; if (value >= 29 && value <= 39) return '⛈️'; if (value >= 41 && value <= 42) return '❄️'; return '❓'; };
     
-    // -- FIXED fetchWeatherForecast Function --
+    // -- NEW ROBUST fetchWeatherForecast Function --
     const fetchWeatherForecast = async () => {
         if (!CWA_API_KEY) {
             weatherContainer.innerHTML = `<p style="color: red;">請在程式碼中填入您的氣象署 API 授權碼。</p>`;
@@ -352,56 +352,66 @@ document.addEventListener('DOMContentLoaded', () => {
             locationData.weatherElement.forEach(elem => {
                 weatherElements[elem.elementName] = elem.time;
             });
-
+            
             const dailyData = {};
-            // 使用溫度(T)的時間點來建立日期基礎
+            const allDates = new Set();
+
+            // 1. Collect all unique dates from all elements
+            ['T', 'Wx', 'PoP12h'].forEach(elemName => {
+                if (weatherElements[elemName]) {
+                    weatherElements[elemName].forEach(time => {
+                        const date = (time.dataTime || time.startTime).split(' ')[0];
+                        allDates.add(date);
+                    });
+                }
+            });
+
+            // 2. Initialize dailyData for all collected dates
+            allDates.forEach(date => {
+                dailyData[date] = { temps: [], wx: [], wxValue: [], pop: [] };
+            });
+
+            // 3. Populate the data with defensive checks
             if (weatherElements.T) {
                 weatherElements.T.forEach(time => {
                     const date = time.dataTime.split(' ')[0];
-                    if (!dailyData[date]) {
-                        dailyData[date] = { temps: [], wx: [], wxValue: [], pop: [] };
+                    if (dailyData[date] && time.elementValue && time.elementValue.length > 0) {
+                        dailyData[date].temps.push(parseInt(time.elementValue[0].value, 10));
                     }
-                    dailyData[date].temps.push(parseInt(time.elementValue[0].value, 10));
                 });
             }
-
-            // 將天氣現象(Wx)填入對應的日期
             if (weatherElements.Wx) {
                 weatherElements.Wx.forEach(time => {
                     const date = time.startTime.split(' ')[0];
-                    if (dailyData[date]) {
+                    if (dailyData[date] && time.elementValue && time.elementValue.length > 1) {
                         dailyData[date].wx.push(time.elementValue[0].value);
                         dailyData[date].wxValue.push(time.elementValue[1].value);
                     }
                 });
             }
-
-            // 將降雨機率(PoP12h)填入對應的日期
             if (weatherElements.PoP12h) {
                 weatherElements.PoP12h.forEach(time => {
                     const date = time.startTime.split(' ')[0];
-                    if (dailyData[date]) {
-                        dailyData[date].pop.push(parseInt(time.elementValue[0].value, 10) || 0);
+                    if (dailyData[date] && time.elementValue && time.elementValue.length > 0) {
+                         dailyData[date].pop.push(parseInt(time.elementValue[0].value, 10) || 0);
                     }
                 });
             }
-            
+
             const dates = Object.keys(dailyData).sort();
             if (dates.length === 0) {
                  throw new Error('無法從 API 資料中整理出任何預報');
             }
 
-            // 產生今日天氣資訊 HTML
+            // 4. Generate HTML with guaranteed data structure
             const todayDate = dates[0];
             const today = dailyData[todayDate];
             
-            // --- FIX START: 新增了對空陣列的檢查 ---
-            const todayWx = (today.wx && today.wx.length > 0) ? today.wx[0] : 'N/A';
-            const todayWxValue = (today.wxValue && today.wxValue.length > 0) ? today.wxValue[0] : '';
-            const todayPop = (today.pop && today.pop.length > 0) ? Math.max(...today.pop) : 0;
-            const todayMaxT = (today.temps && today.temps.length > 0) ? Math.max(...today.temps) : 'N/A';
-            const todayMinT = (today.temps && today.temps.length > 0) ? Math.min(...today.temps) : 'N/A';
-            // --- FIX END ---
+            const todayWx = (today.wx.length > 0) ? today.wx[0] : 'N/A';
+            const todayWxValue = (today.wxValue.length > 0) ? today.wxValue[0] : '';
+            const todayPop = (today.pop.length > 0) ? Math.max(...today.pop) : 0;
+            const todayMaxT = (today.temps.length > 0) ? Math.max(...today.temps) : 'N/A';
+            const todayMinT = (today.temps.length > 0) ? Math.min(...today.temps) : 'N/A';
 
             const todayHtml = `
                 <div class="weather-today">
@@ -418,22 +428,19 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                 </div>`;
             
-            // 產生未來一週預報 HTML
             let forecastHtml = '<div class="weather-forecast">';
             dates.forEach(dateKey => {
                 const forecast = dailyData[dateKey];
-                if (!forecast || !forecast.temps || forecast.temps.length === 0) return;
+                if (!forecast || forecast.temps.length === 0) return;
 
                 const date = new Date(dateKey);
                 const day = `${date.getMonth() + 1}/${date.getDate()}`;
                 
-                // --- FIX START: 新增了對空陣列的檢查 ---
-                const iconValue = (forecast.wxValue && forecast.wxValue.length > 0) ? forecast.wxValue[0] : '';
+                const iconValue = (forecast.wxValue.length > 0) ? forecast.wxValue[0] : '';
                 const icon = getCwaWeatherIcon(iconValue);
                 const maxT = Math.max(...forecast.temps);
                 const minT = Math.min(...forecast.temps);
-                const pop = (forecast.pop && forecast.pop.length > 0) ? Math.max(...forecast.pop) : 0;
-                // --- FIX END ---
+                const pop = (forecast.pop.length > 0) ? Math.max(...forecast.pop) : 0;
 
                 forecastHtml += `
                     <div class="forecast-day">
