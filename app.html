@@ -146,6 +146,7 @@
         /* 表單與容器樣式 */
         .form-container { background: white; padding: 2.5rem; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); max-width: 600px; margin: 0 auto; }
         h3, h4 { color: #343a40; }
+        h3.error { color: #dc3545; }
         label { display: block; margin-top: 1rem; margin-bottom: 5px; font-weight: bold; color: #495057; }
         input[type="text"], input[type="password"], input[type="email"], textarea { width: 100%; padding: 12px; margin-bottom: 12px; border: 1px solid #ced4da; border-radius: 4px; box-sizing: border-box; font-size: 1em; }
         button { width: 100%; padding: 12px; margin-top: 10px; border: none; border-radius: 4px; color: white; font-weight: bold; cursor: pointer; font-size: 1em; }
@@ -550,9 +551,13 @@ document.addEventListener('DOMContentLoaded', () => {
     userGeminiKeyInput.addEventListener('input', () => { localStorage.setItem('geminiApiKey', userGeminiKeyInput.value); });
 
 
-    // --- 核心認證邏輯 ---
+    // --- 核心認證邏輯 (修正版) ---
     _supabase.auth.onAuthStateChange(async (event, session) => {
         if (session && session.user) {
+            // 不論成功與否，都先顯示 App 介面，隱藏載入動畫
+            appContainer.style.display = 'block';
+            loadingOverlay.style.display = 'none';
+
             // 最關鍵的一步：從資料庫查詢使用者 Profile
             const { data: profile, error } = await _supabase
                 .from('profiles')
@@ -563,23 +568,34 @@ document.addEventListener('DOMContentLoaded', () => {
             // 處理查詢錯誤
             if (error) {
                 console.error("查詢 Profile 失敗:", error);
-                alert(`查詢使用者權限失敗，請確認您的資料庫權限(RLS)設定是否正確。\n錯誤: ${error.message}`);
-                await _supabase.auth.signOut(); // 登出以避免無限循環
+                // 直接在畫面中顯示錯誤，而不是用 alert 後登出
+                document.querySelector('.content-area').innerHTML = 
+                    `<div class="form-container">
+                        <h3 class="error">載入使用者資料失敗</h3>
+                        <p>請檢查瀏覽器的開發人員工具 (F12) Console 中的錯誤訊息。</p>
+                        <p>這通常是因為資料庫的 RLS (Row Level Security) 權限設定不正確所導致。</p>
+                        <p><strong>Supabase 錯誤訊息:</strong> ${error.message}</p>
+                    </div>`;
                 return;
             }
             
             // 處理查詢成功但沒有 Profile 的情況
             if (!profile) {
-                alert('您的帳號尚未被授權，這可能是因為資料庫觸發器尚未執行或設定失敗。將為您登出。');
-                await _supabase.auth.signOut();
+                console.error("找不到使用者的 Profile:", session.user.id);
+                 // 直接在畫面中顯示錯誤
+                document.querySelector('.content-area').innerHTML = 
+                    `<div class="form-container">
+                        <h3 class="error">帳號尚未被授權</h3>
+                        <p>系統在 <code>profiles</code> 資料表中找不到您的資料。</p>
+                        <p>這通常是因為資料庫的 Trigger (觸發器) 沒有成功執行或設定錯誤。</p>
+                        <p>請聯絡系統管理員。</p>
+                    </div>`;
                 return;
             }
 
             // 所有驗證通過，根據不同事件更新畫面
             if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN') {
                 await loadUserProfile(session.user, profile.role);
-                appContainer.style.display = 'block';
-                loadingOverlay.style.display = 'none';
                 switchView('home');
                 fetchWeatherForecast();
                 const savedGeminiKey = localStorage.getItem('geminiApiKey');
