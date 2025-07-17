@@ -322,7 +322,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const addUser = async (event) => { event.preventDefault(); const email = newUserEmailInput.value.trim(); if (!email) return; adminMessageDiv.innerText = '處理中...'; const { error } = await _supabase.from('profiles').insert({ email: email, role: 'member' }); if (error) { adminMessageDiv.innerText = `新增失敗: ${error.message}`; } else { adminMessageDiv.innerText = `已成功授權 ${email}！請該使用者用此 Email 註冊/登入。`; newUserEmailInput.value = ''; fetchUsers(); } };
     const getCwaWeatherIcon = (wxValue) => { const value = parseInt(wxValue, 10); if (value === 1) return '☀️'; if (value >= 2 && value <= 3) return '🌤️'; if (value >= 4 && value <= 7) return '☁️'; if (value >= 8 && value <= 22) return '🌧️'; if (value >= 23 && value <= 28) return '🌫️'; if (value >= 29 && value <= 39) return '⛈️'; if (value >= 41 && value <= 42) return '❄️'; return '❓'; };
     
-    // -- FINAL CORRECTED fetchWeatherForecast Function --
+    // -- FINAL DEFINITIVE fetchWeatherForecast Function --
     const fetchWeatherForecast = async () => {
         if (!CWA_API_KEY) {
             weatherContainer.innerHTML = `<p style="color: red;">請在程式碼中填入您的氣象署 API 授權碼。</p>`;
@@ -350,20 +350,23 @@ document.addEventListener('DOMContentLoaded', () => {
                 throw new Error('API 回應成功但缺少 "records" 欄位');
             }
 
-            // --- THE FINAL FIX: Correctly access the nested district list ---
+            // --- THE FINAL FIX: Directly use data.records.Locations ---
             let districtList = [];
-            // The API uses "Locations" with a capital L, which contains the list of districts
-            if (data.records.Locations && Array.isArray(data.records.Locations) && data.records.Locations.length > 0) {
-                 districtList = data.records.Locations[0].location;
+            // The API uses "Locations" with a capital L, which IS the list of districts
+            if (data.records.Locations && Array.isArray(data.records.Locations)) {
+                districtList = data.records.Locations;
+            } else if (data.records.location && Array.isArray(data.records.location)) {
+                // Fallback for the other structure, just in case
+                districtList = data.records.location;
             }
             
-            if (!districtList || districtList.length === 0) {
+            if (districtList.length === 0) {
                  throw new Error('API 回應成功但無法在其中找到有效的地區列表');
             }
 
             const locationData = districtList.find(l => l.locationName === district);
             if (!locationData) {
-                throw new Error(`在 API 回應中找不到 ${district} 的預報資料`);
+                throw new Error(`在 API 回應中找不到 "${district}" 的預報資料`);
             }
 
             const weatherElements = {};
