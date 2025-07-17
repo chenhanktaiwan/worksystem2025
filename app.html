@@ -330,8 +330,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const city = '臺北市';
-        const dataId = 'F-C0032-001'; // 使用 36小時(未來2天)預報 API，結構較為穩定
-        const apiUrl = `https://opendata.cwa.gov.tw/api/v1/rest/datastore/${dataId}?Authorization=${CWA_API_KEY}&locationName=${encodeURIComponent(city)}&elementName=Wx,PoP,MinT,MaxT`;
+        const dataId = 'F-D0047-063'; // 鄉鎮天氣預報-臺北市未來1週天氣預報
+        const apiUrl = `https://opendata.cwa.gov.tw/api/v1/rest/datastore/${dataId}?Authorization=${CWA_API_KEY}&elementName=Wx,PoP12h,T`;
 
         try {
             const response = await fetch(apiUrl);
@@ -345,21 +345,75 @@ document.addEventListener('DOMContentLoaded', () => {
                 throw new Error(data.error?.message || 'API 回應失敗');
             }
             
-            if (!data.records || !data.records.location || data.records.location.length === 0) {
+            if (!data.records || !data.records.locations || data.records.locations.length === 0) {
                  throw new Error('API 回應成功但資料結構不正確或無資料');
             }
 
-            const locationData = data.records.location[0];
+            const locations = data.records.locations[0].location;
+            if (!locations || locations.length === 0) {
+                 throw new Error('API 回應成功但無法在其中找到有效的地區列表');
+            }
+            
+            const locationData = locations[0]; // Use the first district as representative data
+
+            if (!locationData || !Array.isArray(locationData.weatherElement)) {
+                throw new Error('代表地區的資料結構不完整，缺少 weatherElement 陣列');
+            }
+
             const weatherElements = {};
             locationData.weatherElement.forEach(elem => {
                 weatherElements[elem.elementName] = elem.time;
             });
             
-            const todayWx = weatherElements.Wx[0].parameter.parameterName;
-            const todayPop = weatherElements.PoP[0].parameter.parameterName;
-            const todayMaxT = weatherElements.MaxT[0].parameter.parameterName;
-            const todayMinT = weatherElements.MinT[0].parameter.parameterName;
-            const todayWxValue = weatherElements.Wx[0].parameter.parameterValue;
+            const dailyData = {};
+            const ensureDayExists = (date) => {
+                if (!dailyData[date]) {
+                    dailyData[date] = { temps: [], wx: [], wxValue: [], pop: [] };
+                }
+            };
+            
+            if (weatherElements.T) {
+                weatherElements.T.forEach(time => {
+                    if (time.dataTime && time.elementValue && time.elementValue.length > 0) {
+                        const date = time.dataTime.split(' ')[0];
+                        ensureDayExists(date);
+                        dailyData[date].temps.push(parseInt(time.elementValue[0].value, 10));
+                    }
+                });
+            }
+            if (weatherElements.Wx) {
+                weatherElements.Wx.forEach(time => {
+                    if (time.startTime && time.elementValue && time.elementValue.length > 1) {
+                        const date = time.startTime.split(' ')[0];
+                        ensureDayExists(date);
+                        dailyData[date].wx.push(time.elementValue[0].value);
+                        dailyData[date].wxValue.push(time.elementValue[1].value);
+                    }
+                });
+            }
+            if (weatherElements.PoP12h) {
+                weatherElements.PoP12h.forEach(time => {
+                    if (time.startTime && time.elementValue && time.elementValue.length > 0) {
+                        const date = time.startTime.split(' ')[0];
+                        ensureDayExists(date);
+                        dailyData[date].pop.push(parseInt(time.elementValue[0].value, 10) || 0);
+                    }
+                });
+            }
+
+            const dates = Object.keys(dailyData).sort();
+            if (dates.length === 0) {
+                 throw new Error('無法從 API 資料中整理出任何預報');
+            }
+
+            const todayDate = dates[0];
+            const today = dailyData[todayDate];
+            
+            const todayWx = (today.wx.length > 0) ? today.wx[0] : 'N/A';
+            const todayWxValue = (today.wxValue.length > 0) ? today.wxValue[0] : '';
+            const todayPop = (today.pop.length > 0) ? Math.max(...today.pop) : 0;
+            const todayMaxT = (today.temps.length > 0) ? Math.max(...today.temps) : 'N/A';
+            const todayMinT = (today.temps.length > 0) ? Math.min(...today.temps) : 'N/A';
 
             const todayHtml = `
                 <div class="weather-today">
@@ -377,26 +431,28 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>`;
             
             let forecastHtml = '<div class="weather-forecast">';
-            // This API provides data in 12-hour intervals for 3 periods (36 hours)
-            for (let i = 0; i < weatherElements.Wx.length; i++) {
-                const forecastDate = new Date(weatherElements.Wx[i].startTime);
-                // Display a simpler forecast for subsequent periods
-                 if (i > 0) { // Start from the second time period for the forecast display
-                    const day = `${forecastDate.getMonth() + 1}/${forecastDate.getDate()}`;
-                    const icon = getCwaWeatherIcon(weatherElements.Wx[i].parameter.parameterValue);
-                    const minT = weatherElements.MinT[i].parameter.parameterName;
-                    const maxT = weatherElements.MaxT[i].parameter.parameterName;
-                    const pop = weatherElements.PoP[i].parameter.parameterName;
+            // Limit to 7 days for the forecast
+            dates.slice(0, 7).forEach(dateKey => {
+                const forecast = dailyData[dateKey];
+                if (!forecast || forecast.temps.length === 0) return;
 
-                    forecastHtml += `
-                        <div class="forecast-day">
-                            <div class="date">${day}</div>
-                            <div class="icon">${icon}</div>
-                            <div class="temp">${minT}°/${maxT}°</div>
-                            <div class="pop">💧 ${pop}%</div>
-                        </div>`;
-                 }
-            }
+                const date = new Date(dateKey);
+                const day = `${date.getMonth() + 1}/${date.getDate()}`;
+                
+                const iconValue = (forecast.wxValue.length > 0) ? forecast.wxValue[0] : '';
+                const icon = getCwaWeatherIcon(iconValue);
+                const maxT = Math.max(...forecast.temps);
+                const minT = Math.min(...forecast.temps);
+                const pop = (forecast.pop.length > 0) ? Math.max(...forecast.pop) : 0;
+
+                forecastHtml += `
+                    <div class="forecast-day">
+                        <div class="date">${day}</div>
+                        <div class="icon">${icon}</div>
+                        <div class="temp">${minT}°/${maxT}°</div>
+                        <div class="pop">💧 ${pop}%</div>
+                    </div>`;
+            });
             forecastHtml += '</div>';
 
             weatherContainer.innerHTML = `<div class="weather-widget">${todayHtml}${forecastHtml}</div>`;
