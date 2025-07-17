@@ -349,8 +349,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 throw new Error('API 回應成功但缺少 "records" 欄位');
             }
 
-            // --- THE DEFINITIVE FIX: Correctly access the deeply nested district list ---
+            // --- THE DEFINITIVE FIX v2: Correctly access the deeply nested district list ---
             let districtList = [];
+            // The correct path is records -> Locations (Capital L) -> [0] -> location (lowercase l)
             if (data.records.Locations && Array.isArray(data.records.Locations) && data.records.Locations.length > 0) {
                 const cityContainer = data.records.Locations[0];
                 if (cityContainer && cityContainer.location && Array.isArray(cityContainer.location)) {
