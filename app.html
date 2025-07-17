@@ -350,17 +350,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 throw new Error('API 回應成功但缺少 "records" 欄位');
             }
 
-            // --- THE FIX: Corrected to use capital "L" on Locations ---
+            // --- THE FINAL FIX: Correctly access the nested district list ---
             let districtList = [];
-            // The API uses "Locations" with a capital L
+            // The API uses "Locations" with a capital L, which contains the list of districts
             if (data.records.Locations && Array.isArray(data.records.Locations) && data.records.Locations.length > 0) {
-                // Check if the nested location list exists
-                if(data.records.Locations[0] && Array.isArray(data.records.Locations[0].location)) {
-                    districtList = data.records.Locations[0].location;
-                }
+                 districtList = data.records.Locations[0].location;
             }
             
-            if (districtList.length === 0) {
+            if (!districtList || districtList.length === 0) {
                  throw new Error('API 回應成功但無法在其中找到有效的地區列表');
             }
 
