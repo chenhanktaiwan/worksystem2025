@@ -335,12 +335,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const loadingOverlay = document.getElementById('loading-overlay');
     const appContainer = document.querySelector('.app-container');
     const weatherContainer = document.getElementById('weather-forecast-container');
-    
-    // --- 新增與修改的元素 ---
     const hamburgerMenu = document.getElementById('hamburger-menu');
     const navLinksContainer = document.getElementById('nav-links');
-
-    // --- (原本的元素，保持不變) ---
     const sidebarAvatar = document.getElementById('sidebar-avatar-preview');
     const sidebarUsername = document.getElementById('sidebar-username-preview');
     const navLinks = document.querySelectorAll('.nav-link');
@@ -374,13 +370,16 @@ document.addEventListener('DOMContentLoaded', () => {
         const { data: profile, error } = await _supabase.from('profiles').select('*').eq('id', user.id).single();
         if (error && error.code !== 'PGRST116') { console.error('讀取 profile 失敗:', error); return; }
         currentUserProfile = profile;
-        const nickname = user.user_metadata.nickname || user.email.split('@')[0];
+        // Use a default avatar if none is set
         const avatarUrl = user.user_metadata.avatar_url || 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMjAiIGhlaWdodD0iMTIwIiB2aWV3Qm94PSIwIDAgMTIwIDEyMCI+CiAgPHJlY3Qgd2lkdGg9IjEyMCIgaGVpZ2h0PSIxMjAiIHN0eWxlPSJmaWxsOiNjZWMwY2U7IiAvPgogIDxwYXRoIGQ9Ik02MCA2MEM3Ni41NjkgNjAgOTAgNDYuNTY5IDkwIDMwQzkwIDEzLjQzMSA3Ni41NjkgMCA2MCAwQzQzLjQzMSAwIDMwIDEzLjQzMSA5MCAzMEMzMCA0Ni41NjkgNDMuNDMxIDYwIDYwIDYwWk02MCA3MEMzNy45MDkgNzEgMjAgODguOTA5IDIwIDExMVYxMjBIMTAwVjExMUMxMDAgODguOTA5IDgyLjA5MSA3MSA2MCA3MVoiIGZpbGw9IiNhYWFiYjAiLz4KPC9zdmc+';
+        const nickname = user.user_metadata.nickname || user.email.split('@')[0];
+        
         sidebarAvatar.src = avatarUrl;
         sidebarUsername.innerText = nickname;
-        profileAvatar.src = avatarUrl;
+        profileAvatar.src = avatarUrl; // Also update the profile page avatar
         nicknameInput.value = user.user_metadata.nickname || '';
         bioTextarea.value = user.user_metadata.bio || '';
+
         if (user.app_metadata.provider !== 'google' && user.app_metadata.providers.includes('email')) {
             passwordSection.style.display = 'block';
         } else {
@@ -400,12 +399,67 @@ document.addEventListener('DOMContentLoaded', () => {
         if (targetView) { targetView.classList.add('active'); } 
         const targetLink = document.querySelector(`.nav-link[data-view="${viewName}"]`); 
         if (targetLink) { targetLink.classList.add('active'); } 
-        // 在手機版切換視圖後，自動關閉漢堡選單
         navLinksContainer.classList.remove('active');
     };
     const signOut = async () => { await _supabase.auth.signOut(); };
-    const updateProfile = async () => { messageDiv.innerText = "更新中..."; const { data, error } = await _supabase.auth.updateUser({ data: { nickname: nicknameInput.value.trim(), bio: bioTextarea.value.trim() } }); if (error) { messageDiv.innerText = "更新失敗：" + error.message; } else { messageDiv.innerText = "個人資料已成功儲存！"; loadUserProfile(data.user); } };
-    const uploadAvatar = async (event) => { const file = event.target.files[0]; if (!file || !currentUser) return; const fileExt = file.name.split('.').pop(); const filePath = `${currentUser.id}/${Date.now()}.${fileExt}`; messageDiv.innerText = "大頭貼上傳中..."; const { error: uploadError } = await _supabase.storage.from('avatars').upload(filePath, file); if (uploadError) { messageDiv.innerText = "上傳失敗：" + uploadError.message; return; } const { data: urlData } = _supabase.storage.from('avatars').getPublicUrl(filePath); const { data, error: updateError } = await _supabase.auth.updateUser({ data: { avatar_url: urlData.publicUrl } }); if (updateError) { messageDiv.innerText = "更新大頭貼失敗：" + updateError.message; } else { messageDiv.innerText = "大頭貼已更新！"; loadUserProfile(data.user); } };
+    const updateProfile = async () => { messageDiv.innerText = "更新中..."; const { data, error } = await _supabase.auth.updateUser({ data: { nickname: nicknameInput.value.trim(), bio: bioTextarea.value.trim() } }); if (error) { messageDiv.innerText = "更新失敗：" + error.message; } else { messageDiv.innerText = "個人資料已成功儲存！"; /* USER_UPDATED event will handle reload */ } };
+    
+    // --- ★★★ 修改後的大頭貼上傳函式 ★★★ ---
+    const uploadAvatar = async (event) => {
+        const file = event.target.files[0];
+        if (!file || !currentUser) return;
+
+        messageDiv.innerText = "大頭貼上傳中...";
+        messageDiv.style.color = '#343a40'; // Reset color
+
+        // 使用固定的檔案路徑，方便覆蓋
+        const fileExt = file.name.split('.').pop();
+        const filePath = `${currentUser.id}/avatar.${fileExt}`;
+
+        try {
+            // 使用 upsert:true 來覆蓋已存在的檔案
+            const { error: uploadError } = await _supabase.storage
+                .from('avatars')
+                .upload(filePath, file, {
+                    cacheControl: '3600',
+                    upsert: true
+                });
+
+            if (uploadError) {
+                throw uploadError;
+            }
+
+            // 取得公開的 URL
+            const { data: urlData } = _supabase.storage
+                .from('avatars')
+                .getPublicUrl(filePath);
+
+            // 加上時間戳記來強制瀏覽器更新快取
+            const uniqueUrl = `${urlData.publicUrl}?t=${new Date().getTime()}`;
+
+            // 更新使用者的 metadata
+            const { error: updateError } = await _supabase.auth.updateUser({
+                data: { avatar_url: uniqueUrl }
+            });
+
+            if (updateError) {
+                throw updateError;
+            }
+
+            messageDiv.innerText = "大頭貼已成功更新！";
+            messageDiv.style.color = '#28a745'; // Green for success
+            
+            // 手動更新一次畫面上的圖片，提供更即時的回饋
+            sidebarAvatar.src = uniqueUrl;
+            profileAvatar.src = uniqueUrl;
+
+        } catch (error) {
+            console.error('大頭貼上傳失敗:', error);
+            messageDiv.innerText = "更新失敗：" + error.message;
+            messageDiv.style.color = '#dc3545'; // Red for error
+        }
+    };
+
     const updatePassword = async () => { const newPassword = newPasswordInput.value; if (!newPassword || newPassword.length < 6) { messageDiv.innerText = '密碼長度至少需要 6 個字元。'; return; } messageDiv.innerText = "更新中..."; const { error } = await _supabase.auth.updateUser({ password: newPassword }); if (error) { messageDiv.innerText = '密碼更新失敗: ' + error.message; } else { messageDiv.innerText = '密碼已成功更新！'; newPasswordInput.value = ''; } };
     const handleGeminiSearch = async (event) => { event.preventDefault(); const prompt = geminiPromptInput.value; if (!prompt) return; geminiResultsDiv.innerHTML = '<div class="loading-spinner"></div><p style="text-align:center;">思考中...</p>'; try { const chatHistory = [{ role: "user", parts: [{ text: prompt }] }]; const payload = { contents: chatHistory }; const apiKey = userGeminiKeyInput.value.trim() || ""; const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${apiKey}`; const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }); if (!response.ok) { if (response.status === 403) { throw new Error(`API 錯誤 403 (Forbidden)。這通常表示 API 金鑰無效或權限不足。請確認您已啟用 Generative Language API 並檢查金鑰設定。`); } throw new Error(`API 錯誤: ${response.status} ${response.statusText}`); } const result = await response.json(); if (result.candidates && result.candidates.length > 0 && result.candidates[0].content && result.candidates[0].content.parts && result.candidates[0].content.parts.length > 0) { const text = result.candidates[0].content.parts[0].text; geminiResultsDiv.innerText = text; } else { geminiResultsDiv.innerText = '抱歉，無法取得有效的回覆。'; } } catch (error) { console.error("Gemini API 錯誤:", error); geminiResultsDiv.innerText = `發生錯誤：\n${error.message}`; } };
     const fetchUsers = async () => { const { data: users, error } = await _supabase.from('profiles').select('email, role'); if (error) { console.error('取得使用者列表失敗:', error); userListUl.innerHTML = '<li>無法載入列表</li>'; return; } userListUl.innerHTML = ''; users.forEach(user => { const li = document.createElement('li'); li.innerHTML = `<span class="user-email">${user.email}</span> <span class="user-role">${user.role}</span>`; userListUl.appendChild(li); }); };
@@ -415,12 +469,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- 事件綁定 ---
     signOutBtn.addEventListener('click', signOut);
-    
-    // --- 新的漢堡選單事件綁定 ---
     hamburgerMenu.addEventListener('click', () => {
         navLinksContainer.classList.toggle('active');
     });
-
     navLinks.forEach(link => {
         link.addEventListener('click', (e) => {
             e.preventDefault();
@@ -436,14 +487,14 @@ document.addEventListener('DOMContentLoaded', () => {
     addUserForm.addEventListener('submit', addUser);
     userGeminiKeyInput.addEventListener('input', () => { localStorage.setItem('geminiApiKey', userGeminiKeyInput.value); });
 
-    // --- 核心邏輯 (不變) ---
+    // --- 核心邏輯 ---
     _supabase.auth.onAuthStateChange(async (event, session) => {
         if (event === 'INITIAL_SESSION') {
             loadingOverlay.style.display = 'none';
             if (session && session.user) {
                 const { data: profile } = await _supabase.from('profiles').select('id').eq('id', session.user.id).single();
                 if (profile) {
-                    appContainer.style.display = 'block'; // 改為 block
+                    appContainer.style.display = 'block';
                     await loadUserProfile(session.user);
                     switchView('home');
                     fetchWeatherForecast();
