@@ -8,27 +8,142 @@
     <script async src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBfAUYXPVz9lqN5QPyzcNmeCg5ect9ZNcA&callback=initMap&libraries=places,marker&loading=async"></script>
     <style>
         /* 全局與佈局 */
-        :root { --sidebar-width: 240px; }
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans TC", sans-serif; margin: 0; background-color: #f4f7f9; }
-        .app-container { display: flex; height: 100vh; }
+        :root {
+            --navbar-height: 60px;
+            --primary-bg: #2c3e50;
+            --secondary-bg: #34495e;
+            --accent-color: #1abc9c;
+            --text-color: #ecf0f1;
+            --body-bg: #f4f7f9;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans TC", sans-serif;
+            margin: 0;
+            background-color: var(--body-bg);
+            padding-top: var(--navbar-height); /* 為固定導覽列預留空間 */
+        }
+        #loading-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: var(--body-bg);
+            display: flex; justify-content: center; align-items: center;
+            font-size: 1.2rem; color: var(--primary-bg); z-index: 9999;
+        }
 
-        /* ... 其他 CSS 樣式 (與上一版相同) ... */
-        #loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: #f4f7f9; display: flex; justify-content: center; align-items: center; font-size: 1.2rem; color: #2c3e50; z-index: 9999; }
-        .sidebar { width: var(--sidebar-width); background-color: #2c3e50; color: white; display: flex; flex-direction: column; transition: all 0.3s ease-in-out; }
-        .sidebar-main-title { font-family: "Microsoft JhengHei", "微軟正黑體", sans-serif; font-size: 20pt; font-weight: bold; text-align: center; color: #fff; padding: 1.5rem 1rem; margin: 0; border-bottom: 1px solid #34495e; }
-        .sidebar-header { text-align: center; padding: 1.5rem 1rem; }
-        .sidebar-avatar { width: 80px; height: 80px; border-radius: 50%; object-fit: cover; border: 3px solid #34495e; }
-        .sidebar-username { margin-top: 0.75rem; font-weight: bold; font-size: 1.1em; }
-        .sidebar-nav { flex-grow: 1; }
-        .sidebar-nav ul { list-style: none; padding: 0; margin: 0; }
-        .sidebar-nav a { display: flex; align-items: center; gap: 1rem; padding: 1rem 1.5rem; color: #ecf0f1; text-decoration: none; transition: background-color 0.2s; border-left: 3px solid transparent; }
-        .sidebar-nav a:hover { background-color: #34495e; }
-        .sidebar-nav a.active { background-color: #1abc9c; border-left-color: #16a085; }
-        .sidebar-footer { padding: 1.5rem; }
+        /* 頂部導覽列 */
+        .top-navbar {
+            background-color: var(--primary-bg);
+            color: white;
+            padding: 0 2rem;
+            height: var(--navbar-height);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: fixed; /* 固定在頂部 */
+            top: 0;
+            width: 100%;
+            z-index: 1000;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            box-sizing: border-box;
+        }
+        .navbar-brand {
+            font-family: "Microsoft JhengHei", "微軟正黑體", sans-serif;
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: white;
+            text-decoration: none;
+        }
+        .nav-links {
+            display: flex;
+            list-style: none;
+            margin: 0;
+            padding: 0;
+            align-items: center;
+        }
+        .nav-links a {
+            color: var(--text-color);
+            text-decoration: none;
+            padding: 0.8rem 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            border-radius: 4px;
+            transition: background-color 0.2s;
+        }
+        .nav-links a:hover {
+            background-color: var(--secondary-bg);
+        }
+        .nav-links a.active {
+            background-color: var(--accent-color);
+            font-weight: bold;
+        }
         .nav-icon { font-size: 1.2em; }
-        .content-area { flex-grow: 1; padding: 2rem; overflow-y: auto; transition: all 0.3s ease-in-out; }
+
+        /* 使用者資訊與操作 */
+        .user-profile-section {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            position: relative;
+        }
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid var(--secondary-bg);
+        }
+        #signout-btn {
+            background-color: #e74c3c;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: opacity 0.2s;
+        }
+        #signout-btn:hover { opacity: 0.85; }
+
+        /* 漢堡選單 (響應式設計) */
+        .hamburger-menu {
+            display: none;
+            cursor: pointer;
+            font-size: 1.8rem;
+        }
+
+        /* 主要內容區域 */
+        .content-area {
+            padding: 2rem;
+            overflow-y: auto;
+        }
         .view { display: none; }
         .view.active { display: block; }
+
+        /* 當螢幕寬度小於 992px 時的樣式 */
+        @media (max-width: 992px) {
+            .top-navbar { padding: 0 1rem; }
+            .nav-links {
+                display: none;
+                flex-direction: column;
+                position: absolute;
+                top: var(--navbar-height);
+                left: 0;
+                width: 100%;
+                background-color: var(--primary-bg);
+                box-shadow: 0 5px 10px rgba(0,0,0,0.2);
+            }
+            .nav-links.active { display: flex; }
+            .nav-links li { width: 100%; text-align: center; }
+            .nav-links a {
+                padding: 1rem;
+                border-bottom: 1px solid var(--secondary-bg);
+            }
+            .user-profile-section { gap: 0.5rem; }
+            #sidebar-username-preview { display: none; } /* 在手機版隱藏導覽列上的使用者名稱 */
+            .hamburger-menu { display: block; }
+        }
+
+        /* (保留其他所有樣式，例如 .form-container, .dashboard-grid, .weather-widget 等...) */
         .form-container { background: white; padding: 2.5rem; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); max-width: 600px; }
         h3, h4 { color: #343a40; }
         label { display: block; margin-top: 1rem; margin-bottom: 5px; font-weight: bold; color: #495057; }
@@ -36,19 +151,8 @@
         button { width: 100%; padding: 12px; margin-top: 10px; border: none; border-radius: 4px; color: white; font-weight: bold; cursor: pointer; font-size: 1em; }
         #save-profile-btn, #add-user-btn { background-color: #007bff; }
         #update-password-btn { background-color: #17a2b8; }
-        #signout-btn { background-color: #e74c3c; width: auto; display: block; text-align: center; }
         #message, #admin-message { margin-top: 15px; font-weight: bold; min-height: 1.2em; text-align: center; }
         hr { border: 0; border-top: 1px solid #dee2e6; margin: 20px 0; }
-        #sidebar-toggle-btn { background-color: #34495e; width: 100%; margin-bottom: 1rem; }
-        .app-container.sidebar-collapsed .sidebar { width: 88px; }
-        .app-container.sidebar-collapsed .sidebar-main-title { font-size: 0; padding: 0; border: none;}
-        .app-container.sidebar-collapsed .sidebar-header { padding: 1.5rem 0.5rem; }
-        .app-container.sidebar-collapsed .sidebar-avatar { width: 50px; height: 50px; }
-        .app-container.sidebar-collapsed .sidebar-username { display: none; }
-        .app-container.sidebar-collapsed .sidebar-nav a { justify-content: center; padding: 1rem 0; }
-        .app-container.sidebar-collapsed .nav-text { display: none; }
-        .app-container.sidebar-collapsed #sidebar-toggle-btn::after { content: "展開"; }
-        .app-container.sidebar-collapsed #sidebar-toggle-btn { font-size: 0; }
         .page-title { font-family: "Microsoft JhengHei", "微軟正黑體", sans-serif; font-size: 20pt; font-weight: bold; text-align: center; color: #2c3e50; margin-top: 0; margin-bottom: 1rem; }
         .title-divider { border: 0; border-top: 1px solid #e0e0e0; margin-bottom: 2rem; }
         .dashboard-grid { display: flex; flex-wrap: wrap; gap: 2rem; align-items: stretch; }
@@ -92,8 +196,6 @@
             border-radius: 4px;
             box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
         }
-        
-        /* 使用者管理介面樣式 */
         .user-management-container { display: flex; gap: 2rem; flex-wrap: wrap; }
         .user-list, .add-user-form { flex: 1; min-width: 300px; background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
         .user-list ul { list-style: none; padding: 0; }
@@ -108,26 +210,28 @@
 <div id="loading-overlay">載入中...</div>
 
 <div class="app-container" style="display: none;">
-    <aside class="sidebar">
-        <h1 class="sidebar-main-title">我的工作站</h1>
-        <div class="sidebar-header">
-            <img id="sidebar-avatar-preview" class="sidebar-avatar" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="Avatar">
-            <h4 id="sidebar-username-preview" class="sidebar-username">使用者</h4>
-        </div>
-        <nav class="sidebar-nav">
-            <ul>
+    <header class="top-navbar">
+        <a href="#" class="navbar-brand">我的工作站</a>
+        
+        <nav class="main-navigation">
+            <ul class="nav-links" id="nav-links">
                 <li><a href="#" class="nav-link active" data-view="home"><span class="nav-icon">🏠</span> <span class="nav-text">個人首頁</span></a></li>
                 <li><a href="#" class="nav-link" data-view="calendar"><span class="nav-icon">🗓️</span> <span class="nav-text">行事曆</span></a></li>
                 <li><a href="#" class="nav-link" data-view="chat"><span class="nav-icon">💬</span> <span class="nav-text">聊天</span></a></li>
-                <li><a href="#" class="nav-link" data-view="profile"><span class="nav-icon">⚙️</span> <span class="nav-text">個人管理後台</span></a></li>
+                <li><a href="#" class="nav-link" data-view="profile"><span class="nav-icon">⚙️</span> <span class="nav-text">個人管理</span></a></li>
                 <li id="user-management-link" style="display: none;"><a href="#" class="nav-link" data-view="user-management"><span class="nav-icon">👥</span> <span class="nav-text">使用者管理</span></a></li>
             </ul>
         </nav>
-        <div class="sidebar-footer">
-            <button id="sidebar-toggle-btn">收合</button>
+
+        <div class="user-profile-section">
+            <img id="sidebar-avatar-preview" class="user-avatar" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="Avatar">
+            <h4 id="sidebar-username-preview" class="sidebar-username">使用者</h4>
             <button id="signout-btn">登出</button>
+            <div class="hamburger-menu" id="hamburger-menu">
+                <span>&#9776;</span>
+            </div>
         </div>
-    </aside>
+    </header>
 
     <main class="content-area">
         <div id="home-view" class="view active">
@@ -167,61 +271,40 @@
 </div>
 
 <script>
+    // 地圖的 initMap function 維持不變
     async function initMap() {
         const { Map, InfoWindow } = await google.maps.importLibrary("maps");
         const { AdvancedMarkerElement } = await google.maps.importLibrary("marker");
-
-        // 預設中心點（例如：台北車站）
         const defaultPosition = { lat: 25.0479, lng: 121.5171 };
-
         const map = new Map(document.getElementById("map"), {
             zoom: 15,
             center: defaultPosition,
-            mapId: "YOUR_MAP_ID" // 您可以為您的地圖設定一個 ID
+            mapId: "YOUR_MAP_ID"
         });
-
         const input = document.getElementById("pac-input");
         const searchBox = new google.maps.places.SearchBox(input);
-
-        // 將搜尋框偏向目前地圖的可視範圍
         map.addListener("bounds_changed", () => {
             searchBox.setBounds(map.getBounds());
         });
-
         let markers = [];
-
-        // 監聽使用者從搜尋建議中選擇地點的事件
         searchBox.addListener("places_changed", () => {
             const places = searchBox.getPlaces();
-
-            if (places.length == 0) {
-                return;
-            }
-
-            // 清除舊的標記
-            markers.forEach((marker) => {
-                marker.setMap(null);
-            });
+            if (places.length == 0) return;
+            markers.forEach((marker) => marker.setMap(null));
             markers = [];
-
             const bounds = new google.maps.LatLngBounds();
-
             places.forEach((place) => {
                 if (!place.geometry || !place.geometry.location) {
                     console.log("回傳的地點資訊不完整");
                     return;
                 }
-
-                // 為每個地點建立一個新的標記
                 const marker = new AdvancedMarkerElement({
                     map,
                     title: place.name,
                     position: place.geometry.location,
                 });
                 markers.push(marker);
-
                 if (place.geometry.viewport) {
-                    // 只針對有 viewport 的地點調整地圖視野
                     bounds.union(place.geometry.viewport);
                 } else {
                     bounds.extend(place.geometry.location);
@@ -229,8 +312,6 @@
             });
             map.fitBounds(bounds);
         });
-
-         // 初始時，先在地圖中心點放置一個標記
          const initialMarker = new AdvancedMarkerElement({
             map,
             title: "目前位置",
@@ -243,7 +324,7 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-    // --- 初始化與取得元素 ---
+    // --- 初始化與取得元素 (大部分不變) ---
     const SUPABASE_URL = 'https://wvdfuqvebqolvpwhdelg.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind2ZGZ1cXZlYnFvbHZwd2hkZWxnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTIyMzA0MjksImV4cCI6MjA2NzgwNjQyOX0.0VAgxyaoyeFeNbto9pUchwqQVqvHzCzyC22wXb01OKU';
     const { createClient } = supabase;
@@ -254,7 +335,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const loadingOverlay = document.getElementById('loading-overlay');
     const appContainer = document.querySelector('.app-container');
     const weatherContainer = document.getElementById('weather-forecast-container');
-    const sidebarToggleBtn = document.getElementById('sidebar-toggle-btn');
+    
+    // --- 新增與修改的元素 ---
+    const hamburgerMenu = document.getElementById('hamburger-menu');
+    const navLinksContainer = document.getElementById('nav-links');
+
+    // --- (原本的元素，保持不變) ---
     const sidebarAvatar = document.getElementById('sidebar-avatar-preview');
     const sidebarUsername = document.getElementById('sidebar-username-preview');
     const navLinks = document.querySelectorAll('.nav-link');
@@ -282,24 +368,19 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentUser = null;
     let currentUserProfile = null;
 
-    // --- 功能函式 ---
+    // --- 功能函式 (大部分不變) ---
     const loadUserProfile = async (user) => {
         currentUser = user;
-        
         const { data: profile, error } = await _supabase.from('profiles').select('*').eq('id', user.id).single();
         if (error && error.code !== 'PGRST116') { console.error('讀取 profile 失敗:', error); return; }
-        
         currentUserProfile = profile;
-
         const nickname = user.user_metadata.nickname || user.email.split('@')[0];
         const avatarUrl = user.user_metadata.avatar_url || 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMjAiIGhlaWdodD0iMTIwIiB2aWV3Qm94PSIwIDAgMTIwIDEyMCI+CiAgPHJlY3Qgd2lkdGg9IjEyMCIgaGVpZ2h0PSIxMjAiIHN0eWxlPSJmaWxsOiNjZWMwY2U7IiAvPgogIDxwYXRoIGQ9Ik02MCA2MEM3Ni41NjkgNjAgOTAgNDYuNTY5IDkwIDMwQzkwIDEzLjQzMSA3Ni41NjkgMCA2MCAwQzQzLjQzMSAwIDMwIDEzLjQzMSA5MCAzMEMzMCA0Ni41NjkgNDMuNDMxIDYwIDYwIDYwWk02MCA3MEMzNy45MDkgNzEgMjAgODguOTA5IDIwIDExMVYxMjBIMTAwVjExMUMxMDAgODguOTA5IDgyLjA5MSA3MSA2MCA3MVoiIGZpbGw9IiNhYWFiYjAiLz4KPC9zdmc+';
-        
         sidebarAvatar.src = avatarUrl;
         sidebarUsername.innerText = nickname;
         profileAvatar.src = avatarUrl;
         nicknameInput.value = user.user_metadata.nickname || '';
         bioTextarea.value = user.user_metadata.bio || '';
-
         if (user.app_metadata.provider !== 'google' && user.app_metadata.providers.includes('email')) {
             passwordSection.style.display = 'block';
         } else {
@@ -312,7 +393,16 @@ document.addEventListener('DOMContentLoaded', () => {
             userManagementLink.style.display = 'none';
         }
     };
-    const switchView = (viewName) => { views.forEach(view => view.classList.remove('active')); navLinks.forEach(link => link.classList.remove('active')); const targetView = document.getElementById(`${viewName}-view`); if (targetView) { targetView.classList.add('active'); } const targetLink = document.querySelector(`.nav-link[data-view="${viewName}"]`); if (targetLink) { targetLink.classList.add('active'); } };
+    const switchView = (viewName) => { 
+        views.forEach(view => view.classList.remove('active')); 
+        navLinks.forEach(link => link.classList.remove('active')); 
+        const targetView = document.getElementById(`${viewName}-view`); 
+        if (targetView) { targetView.classList.add('active'); } 
+        const targetLink = document.querySelector(`.nav-link[data-view="${viewName}"]`); 
+        if (targetLink) { targetLink.classList.add('active'); } 
+        // 在手機版切換視圖後，自動關閉漢堡選單
+        navLinksContainer.classList.remove('active');
+    };
     const signOut = async () => { await _supabase.auth.signOut(); };
     const updateProfile = async () => { messageDiv.innerText = "更新中..."; const { data, error } = await _supabase.auth.updateUser({ data: { nickname: nicknameInput.value.trim(), bio: bioTextarea.value.trim() } }); if (error) { messageDiv.innerText = "更新失敗：" + error.message; } else { messageDiv.innerText = "個人資料已成功儲存！"; loadUserProfile(data.user); } };
     const uploadAvatar = async (event) => { const file = event.target.files[0]; if (!file || !currentUser) return; const fileExt = file.name.split('.').pop(); const filePath = `${currentUser.id}/${Date.now()}.${fileExt}`; messageDiv.innerText = "大頭貼上傳中..."; const { error: uploadError } = await _supabase.storage.from('avatars').upload(filePath, file); if (uploadError) { messageDiv.innerText = "上傳失敗：" + uploadError.message; return; } const { data: urlData } = _supabase.storage.from('avatars').getPublicUrl(filePath); const { data, error: updateError } = await _supabase.auth.updateUser({ data: { avatar_url: urlData.publicUrl } }); if (updateError) { messageDiv.innerText = "更新大頭貼失敗：" + updateError.message; } else { messageDiv.innerText = "大頭貼已更新！"; loadUserProfile(data.user); } };
@@ -321,90 +411,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const fetchUsers = async () => { const { data: users, error } = await _supabase.from('profiles').select('email, role'); if (error) { console.error('取得使用者列表失敗:', error); userListUl.innerHTML = '<li>無法載入列表</li>'; return; } userListUl.innerHTML = ''; users.forEach(user => { const li = document.createElement('li'); li.innerHTML = `<span class="user-email">${user.email}</span> <span class="user-role">${user.role}</span>`; userListUl.appendChild(li); }); };
     const addUser = async (event) => { event.preventDefault(); const email = newUserEmailInput.value.trim(); if (!email) return; adminMessageDiv.innerText = '處理中...'; const { error } = await _supabase.from('profiles').insert({ email: email, role: 'member' }); if (error) { adminMessageDiv.innerText = `新增失敗: ${error.message}`; } else { adminMessageDiv.innerText = `已成功授權 ${email}！請該使用者用此 Email 註冊/登入。`; newUserEmailInput.value = ''; fetchUsers(); } };
     const getCwaWeatherIcon = (wxValue) => { const value = parseInt(wxValue, 10); if (value === 1) return '☀️'; if (value >= 2 && value <= 3) return '🌤️'; if (value >= 4 && value <= 7) return '☁️'; if (value >= 8 && value <= 22) return '🌧️'; if (value >= 23 && value <= 28) return '🌫️'; if (value >= 29 && value <= 39) return '⛈️'; if (value >= 41 && value <= 42) return '❄️'; return '❓'; };
-    
-    // -- THE GUARANTEED FINAL fetchWeatherForecast Function --
-    const fetchWeatherForecast = async () => {
-        if (!CWA_API_KEY) {
-            weatherContainer.innerHTML = `<p style="color: red;">請在程式碼中填入您的氣象署 API 授權碼。</p>`;
-            return;
-        }
-
-        const city = '臺北市';
-        const dataId = 'F-C0032-001'; 
-        const apiUrl = `https://opendata.cwa.gov.tw/api/v1/rest/datastore/${dataId}?Authorization=${CWA_API_KEY}&locationName=${encodeURIComponent(city)}&elementName=Wx,PoP,MinT,MaxT`;
-
-        try {
-            const response = await fetch(apiUrl);
-            if (!response.ok) {
-                throw new Error(`HTTP 錯誤! 狀態: ${response.status}`);
-            }
-
-            const data = await response.json();
-            
-            if (data.success !== 'true') {
-                throw new Error(data.error?.message || 'API 回應失敗');
-            }
-            
-            if (!data.records || !Array.isArray(data.records.location) || data.records.location.length === 0) {
-                 throw new Error('API 回應成功但資料結構不正確或無資料');
-            }
-
-            const locationData = data.records.location[0];
-            const weatherElements = {};
-            locationData.weatherElement.forEach(elem => {
-                weatherElements[elem.elementName] = elem.time;
-            });
-            
-            const todayWx = weatherElements.Wx[0].parameter.parameterName;
-            const todayPop = weatherElements.PoP[0].parameter.parameterName;
-            const todayMaxT = weatherElements.MaxT[0].parameter.parameterName;
-            const todayMinT = weatherElements.MinT[0].parameter.parameterName;
-            const todayWxValue = weatherElements.Wx[0].parameter.parameterValue;
-
-            const todayHtml = `
-                <div class="weather-today">
-                    <div class="weather-today-main">
-                        <div class="weather-today-icon">${getCwaWeatherIcon(todayWxValue)}</div>
-                        <div class="weather-today-details">
-                            <div class="condition">${todayWx}</div>
-                            <div class="pop">降雨機率：${todayPop}%</div>
-                        </div>
-                    </div>
-                    <div style="text-align: right;">
-                        <div class="weather-today-temp">${todayMinT}° / ${todayMaxT}°</div>
-                        <div class="weather-today-location">${city}</div>
-                    </div>
-                </div>`;
-            
-            let forecastHtml = '<div class="weather-forecast">';
-            for (let i = 1; i < weatherElements.Wx.length; i++) {
-                const forecastDate = new Date(weatherElements.Wx[i].startTime);
-                const day = `${forecastDate.getMonth() + 1}/${forecastDate.getDate()}`;
-                const icon = getCwaWeatherIcon(weatherElements.Wx[i].parameter.parameterValue);
-                const minT = weatherElements.MinT[i].parameter.parameterName;
-                const maxT = weatherElements.MaxT[i].parameter.parameterName;
-                const pop = weatherElements.PoP[i].parameter.parameterName;
-                forecastHtml += `
-                    <div class="forecast-day">
-                        <div class="date">${day}</div>
-                        <div class="icon">${icon}</div>
-                        <div class="temp">${minT}°/${maxT}°</div>
-                        <div class="pop">💧 ${pop}%</div>
-                    </div>`;
-            }
-            forecastHtml += '</div>';
-
-            weatherContainer.innerHTML = `<div class="weather-widget">${todayHtml}${forecastHtml}</div>`;
-
-        } catch (error) {
-            weatherContainer.innerHTML = `<p style="color: red; text-align: center;">天氣資訊載入失敗: ${error.message}</p>`;
-            console.error("天氣資訊載入失敗:", error);
-        }
-    };
+    const fetchWeatherForecast = async () => { if (!CWA_API_KEY) { weatherContainer.innerHTML = `<p style="color: red;">請在程式碼中填入您的氣象署 API 授權碼。</p>`; return; } const city = '臺北市'; const dataId = 'F-C0032-001'; const apiUrl = `https://opendata.cwa.gov.tw/api/v1/rest/datastore/${dataId}?Authorization=${CWA_API_KEY}&locationName=${encodeURIComponent(city)}&elementName=Wx,PoP,MinT,MaxT`; try { const response = await fetch(apiUrl); if (!response.ok) { throw new Error(`HTTP 錯誤! 狀態: ${response.status}`); } const data = await response.json(); if (data.success !== 'true') { throw new Error(data.error?.message || 'API 回應失敗'); } if (!data.records || !Array.isArray(data.records.location) || data.records.location.length === 0) { throw new Error('API 回應成功但資料結構不正確或無資料'); } const locationData = data.records.location[0]; const weatherElements = {}; locationData.weatherElement.forEach(elem => { weatherElements[elem.elementName] = elem.time; }); const todayWx = weatherElements.Wx[0].parameter.parameterName; const todayPop = weatherElements.PoP[0].parameter.parameterName; const todayMaxT = weatherElements.MaxT[0].parameter.parameterName; const todayMinT = weatherElements.MinT[0].parameter.parameterName; const todayWxValue = weatherElements.Wx[0].parameter.parameterValue; const todayHtml = `<div class="weather-today"><div class="weather-today-main"><div class="weather-today-icon">${getCwaWeatherIcon(todayWxValue)}</div><div class="weather-today-details"><div class="condition">${todayWx}</div><div class="pop">降雨機率：${todayPop}%</div></div></div><div style="text-align: right;"><div class="weather-today-temp">${todayMinT}° / ${todayMaxT}°</div><div class="weather-today-location">${city}</div></div></div>`; let forecastHtml = '<div class="weather-forecast">'; for (let i = 1; i < weatherElements.Wx.length; i++) { const forecastDate = new Date(weatherElements.Wx[i].startTime); const day = `${forecastDate.getMonth() + 1}/${forecastDate.getDate()}`; const icon = getCwaWeatherIcon(weatherElements.Wx[i].parameter.parameterValue); const minT = weatherElements.MinT[i].parameter.parameterName; const maxT = weatherElements.MaxT[i].parameter.parameterName; const pop = weatherElements.PoP[i].parameter.parameterName; forecastHtml += `<div class="forecast-day"><div class="date">${day}</div><div class="icon">${icon}</div><div class="temp">${minT}°/${maxT}°</div><div class="pop">💧 ${pop}%</div></div>`; } forecastHtml += '</div>'; weatherContainer.innerHTML = `<div class="weather-widget">${todayHtml}${forecastHtml}</div>`; } catch (error) { weatherContainer.innerHTML = `<p style="color: red; text-align: center;">天氣資訊載入失敗: ${error.message}</p>`; console.error("天氣資訊載入失敗:", error); } };
 
     // --- 事件綁定 ---
     signOutBtn.addEventListener('click', signOut);
-    sidebarToggleBtn.addEventListener('click', () => { appContainer.classList.toggle('sidebar-collapsed'); });
+    
+    // --- 新的漢堡選單事件綁定 ---
+    hamburgerMenu.addEventListener('click', () => {
+        navLinksContainer.classList.toggle('active');
+    });
+
     navLinks.forEach(link => {
         link.addEventListener('click', (e) => {
             e.preventDefault();
@@ -420,14 +436,14 @@ document.addEventListener('DOMContentLoaded', () => {
     addUserForm.addEventListener('submit', addUser);
     userGeminiKeyInput.addEventListener('input', () => { localStorage.setItem('geminiApiKey', userGeminiKeyInput.value); });
 
-    // --- 核心邏輯 ---
+    // --- 核心邏輯 (不變) ---
     _supabase.auth.onAuthStateChange(async (event, session) => {
         if (event === 'INITIAL_SESSION') {
             loadingOverlay.style.display = 'none';
             if (session && session.user) {
                 const { data: profile } = await _supabase.from('profiles').select('id').eq('id', session.user.id).single();
                 if (profile) {
-                    appContainer.style.display = 'flex';
+                    appContainer.style.display = 'block'; // 改為 block
                     await loadUserProfile(session.user);
                     switchView('home');
                     fetchWeatherForecast();
