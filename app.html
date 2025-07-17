@@ -491,15 +491,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const getCwaWeatherIcon = (wxValue) => { const value = parseInt(wxValue, 10); if (value === 1) return '☀️'; if (value >= 2 && value <= 3) return '🌤️'; if (value >= 4 && value <= 7) return '☁️'; if (value >= 8 && value <= 22) return '🌧️'; if (value >= 23 && value <= 28) return '🌫️'; if (value >= 29 && value <= 39) return '⛈️'; if (value >= 41 && value <= 42) return '❄️'; return '❓'; };
 
     const fetchWeatherForecast = async () => {
-        // !!! 請將 'YOUR_VERCEL_DOMAIN' 換成您在上一則回覆中建立的 Vercel 專案網域 !!!
-        const vercelDomain = 'YOUR_VERCEL_DOMAIN'; // 例如：'worksystem2025-main-abcde123.vercel.app'
+        // This is the corrected line with your Vercel domain
+        const vercelDomain = 'worksystem2025-lkscnzqdm-hanks-projects-a2abec27.vercel.app';
         
-        if (!vercelDomain || vercelDomain === 'YOUR_VERCEL_DOMAIN') {
-            weatherContainer.innerHTML = `<p style="color: red; text-align: center;">請修改 app.html，將 'YOUR_VERCEL_DOMAIN' 換成您自己的 Vercel 網域。</p>`;
-            return;
-        }
-
-        // 我們現在透過 Vercel 建立的安全後端來呼叫 API
+        // We now call the secure backend on Vercel
         const functionUrl = `https://${vercelDomain}/api/weather`;
         weatherContainer.innerHTML = '<p>正在載入天氣資訊...</p>';
 
