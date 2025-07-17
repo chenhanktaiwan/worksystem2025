@@ -325,8 +325,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind2ZGZ1cXZlYnFvbHZwd2hkZWxnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTIyMzA0MjksImV4cCI6MjA2NzgwNjQyOX0.0VAgxyaoyeFeNbto9pUchwqQVqvHzCzyC22wXb01OKU';
     const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     
-    const CWA_API_KEY = 'CWA-09CB4F50-2A02-4667-902A-3D2AFDFBB662'; 
-
     const loadingOverlay = document.getElementById('loading-overlay');
     const appContainer = document.querySelector('.app-container');
     const hamburgerMenu = document.getElementById('hamburger-menu');
@@ -493,22 +491,33 @@ document.addEventListener('DOMContentLoaded', () => {
     const getCwaWeatherIcon = (wxValue) => { const value = parseInt(wxValue, 10); if (value === 1) return '☀️'; if (value >= 2 && value <= 3) return '🌤️'; if (value >= 4 && value <= 7) return '☁️'; if (value >= 8 && value <= 22) return '🌧️'; if (value >= 23 && value <= 28) return '🌫️'; if (value >= 29 && value <= 39) return '⛈️'; if (value >= 41 && value <= 42) return '❄️'; return '❓'; };
 
     const fetchWeatherForecast = async () => {
-        if (!CWA_API_KEY || CWA_API_KEY === 'CWA-09CB4F50-2A02-4667-902A-3D2AFDFBB662') {
-            weatherContainer.innerHTML = `<p style="color: red; text-align: center;">請在程式碼中填入有效的氣象署 API 授權碼。</p>`;
+        // !!! 請將 'YOUR_VERCEL_DOMAIN' 換成您在上一則回覆中建立的 Vercel 專案網域 !!!
+        const vercelDomain = 'YOUR_VERCEL_DOMAIN'; // 例如：'worksystem2025-main-abcde123.vercel.app'
+        
+        if (!vercelDomain || vercelDomain === 'YOUR_VERCEL_DOMAIN') {
+            weatherContainer.innerHTML = `<p style="color: red; text-align: center;">請修改 app.html，將 'YOUR_VERCEL_DOMAIN' 換成您自己的 Vercel 網域。</p>`;
             return;
         }
-        const city = '臺北市';
-        const dataId = 'F-C0032-001'; 
-        const apiUrl = `https://opendata.cwa.gov.tw/api/v1/rest/datastore/${dataId}?Authorization=${CWA_API_KEY}&locationName=${encodeURIComponent(city)}&elementName=Wx,PoP,MinT,MaxT`;
+
+        // 我們現在透過 Vercel 建立的安全後端來呼叫 API
+        const functionUrl = `https://${vercelDomain}/api/weather`;
+        weatherContainer.innerHTML = '<p>正在載入天氣資訊...</p>';
 
         try {
-            const response = await fetch(apiUrl);
-            if (!response.ok) throw new Error(`HTTP 錯誤! 狀態: ${response.status}`);
+            const response = await fetch(functionUrl);
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || `HTTP 錯誤! 狀態: ${response.status}`);
+            }
+            
             const data = await response.json();
+            
             if (data.success !== 'true') throw new Error(data.error?.message || 'API 回應失敗');
             if (!data.records?.location?.[0]) throw new Error('API 回應成功但資料結構不正確');
 
             const locationData = data.records.location[0];
+            const city = locationData.locationName;
             const weatherElements = {};
             locationData.weatherElement.forEach(elem => { weatherElements[elem.elementName] = elem.time; });
             
@@ -551,24 +560,20 @@ document.addEventListener('DOMContentLoaded', () => {
     userGeminiKeyInput.addEventListener('input', () => { localStorage.setItem('geminiApiKey', userGeminiKeyInput.value); });
 
 
-    // --- 核心認證邏輯 (修正版) ---
+    // --- 核心認證邏輯 ---
     _supabase.auth.onAuthStateChange(async (event, session) => {
         if (session && session.user) {
-            // 不論成功與否，都先顯示 App 介面，隱藏載入動畫
             appContainer.style.display = 'block';
             loadingOverlay.style.display = 'none';
-
-            // 最關鍵的一步：從資料庫查詢使用者 Profile
+            
             const { data: profile, error } = await _supabase
                 .from('profiles')
                 .select('role')
                 .eq('id', session.user.id)
                 .single();
             
-            // 處理查詢錯誤
             if (error) {
                 console.error("查詢 Profile 失敗:", error);
-                // 直接在畫面中顯示錯誤，而不是用 alert 後登出
                 document.querySelector('.content-area').innerHTML = 
                     `<div class="form-container">
                         <h3 class="error">載入使用者資料失敗</h3>
@@ -579,10 +584,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
             
-            // 處理查詢成功但沒有 Profile 的情況
             if (!profile) {
                 console.error("找不到使用者的 Profile:", session.user.id);
-                 // 直接在畫面中顯示錯誤
                 document.querySelector('.content-area').innerHTML = 
                     `<div class="form-container">
                         <h3 class="error">帳號尚未被授權</h3>
@@ -593,7 +596,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            // 所有驗證通過，根據不同事件更新畫面
             if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN') {
                 await loadUserProfile(session.user, profile.role);
                 switchView('home');
