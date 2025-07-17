@@ -336,11 +336,25 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             const response = await fetch(apiUrl);
-            if (!response.ok) throw new Error(`HTTP 錯誤! 狀態: ${response.status}`);
+            if (!response.ok) {
+                // 如果伺服器回應不成功 (狀態碼非 2xx)，直接拋出 HTTP 錯誤
+                throw new Error(`HTTP 錯誤! 狀態: ${response.status}`);
+            }
+
             const data = await response.json();
 
-            if (!data.success || !data.records || !data.records.locations || !data.records.locations[0]) {
-                throw new Error('API 回應格式不正確或無資料');
+            // 修正：API 的 success 屬性是字串 'true'，而非布林值
+            if (data.success !== 'true') {
+                // 如果 API 本身回報錯誤，優先顯示 API 提供的錯誤訊息
+                if (data.error && data.error.message) {
+                    throw new Error(`API 回應錯誤: ${data.error.message}`);
+                }
+                // 否則，使用通用的失敗訊息
+                throw new Error('API 回應失敗 (success 狀態不為 true)');
+            }
+
+            if (!data.records || !data.records.locations || !data.records.locations[0]) {
+                throw new Error('API 回應成功但資料結構不完整');
             }
             
             const locationData = data.records.locations[0].location.find(l => l.locationName === district);
@@ -355,7 +369,7 @@ document.addEventListener('DOMContentLoaded', () => {
             
             const dailyData = {};
 
-            // Helper function to initialize a day's structure
+            // Helper function to initialize a day's structure on-the-fly
             const ensureDayExists = (date) => {
                 if (!dailyData[date]) {
                     dailyData[date] = { temps: [], wx: [], wxValue: [], pop: [] };
@@ -365,18 +379,18 @@ document.addEventListener('DOMContentLoaded', () => {
             // Process each element and populate dailyData
             if (weatherElements.T) {
                 weatherElements.T.forEach(time => {
-                    const date = time.dataTime.split(' ')[0];
-                    ensureDayExists(date);
-                    if (time.elementValue && time.elementValue.length > 0) {
+                    if (time.dataTime && time.elementValue && time.elementValue.length > 0) {
+                        const date = time.dataTime.split(' ')[0];
+                        ensureDayExists(date);
                         dailyData[date].temps.push(parseInt(time.elementValue[0].value, 10));
                     }
                 });
             }
             if (weatherElements.Wx) {
                 weatherElements.Wx.forEach(time => {
-                    const date = time.startTime.split(' ')[0];
-                    ensureDayExists(date);
-                    if (time.elementValue && time.elementValue.length > 1) {
+                    if (time.startTime && time.elementValue && time.elementValue.length > 1) {
+                        const date = time.startTime.split(' ')[0];
+                        ensureDayExists(date);
                         dailyData[date].wx.push(time.elementValue[0].value);
                         dailyData[date].wxValue.push(time.elementValue[1].value);
                     }
@@ -384,10 +398,10 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             if (weatherElements.PoP12h) {
                 weatherElements.PoP12h.forEach(time => {
-                    const date = time.startTime.split(' ')[0];
-                    ensureDayExists(date);
-                    if (time.elementValue && time.elementValue.length > 0) {
-                         dailyData[date].pop.push(parseInt(time.elementValue[0].value, 10) || 0);
+                    if (time.startTime && time.elementValue && time.elementValue.length > 0) {
+                        const date = time.startTime.split(' ')[0];
+                        ensureDayExists(date);
+                        dailyData[date].pop.push(parseInt(time.elementValue[0].value, 10) || 0);
                     }
                 });
             }
@@ -503,4 +517,3 @@ document.addEventListener('DOMContentLoaded', () => {
 </script>
 </body>
 </html>
-```
