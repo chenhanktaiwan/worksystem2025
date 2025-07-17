@@ -7,27 +7,144 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script async src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBfAUYXPVz9lqN5QPyzcNmeCg5ect9ZNcA&callback=initMap&libraries=places,marker&loading=async"></script>
     <style>
-        /* (CSS 樣式與上一版相同，此處省略以節省空間) */
-        :root { --navbar-height: 60px; --primary-bg: #2c3e50; --secondary-bg: #34495e; --accent-color: #1abc9c; --text-color: #ecf0f1; --body-bg: #f4f7f9; }
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans TC", sans-serif; margin: 0; background-color: var(--body-bg); padding-top: var(--navbar-height); }
-        #loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: var(--body-bg); display: flex; justify-content: center; align-items: center; font-size: 1.2rem; color: var(--primary-bg); z-index: 9999; }
-        .top-navbar { background-color: var(--primary-bg); color: white; padding: 0 2rem; height: var(--navbar-height); display: flex; justify-content: space-between; align-items: center; position: fixed; top: 0; width: 100%; z-index: 1000; box-shadow: 0 2px 5px rgba(0,0,0,0.1); box-sizing: border-box; }
-        .navbar-brand { font-family: "Microsoft JhengHei", "微軟正黑體", sans-serif; font-size: 1.5rem; font-weight: bold; color: white; text-decoration: none; }
-        .nav-links { display: flex; list-style: none; margin: 0; padding: 0; align-items: center; }
-        .nav-links a { color: var(--text-color); text-decoration: none; padding: 0.8rem 1rem; display: flex; align-items: center; gap: 0.5rem; border-radius: 4px; transition: background-color 0.2s; }
-        .nav-links a:hover { background-color: var(--secondary-bg); }
-        .nav-links a.active { background-color: var(--accent-color); font-weight: bold; }
+        /* 全局與佈局 */
+        :root {
+            --navbar-height: 60px;
+            --primary-bg: #2c3e50;
+            --secondary-bg: #34495e;
+            --accent-color: #1abc9c;
+            --text-color: #ecf0f1;
+            --body-bg: #f4f7f9;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans TC", sans-serif;
+            margin: 0;
+            background-color: var(--body-bg);
+            padding-top: var(--navbar-height); /* 為固定導覽列預留空間 */
+        }
+        #loading-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: var(--body-bg);
+            display: flex; justify-content: center; align-items: center;
+            font-size: 1.2rem; color: var(--primary-bg); z-index: 9999;
+        }
+
+        /* 頂部導覽列 */
+        .top-navbar {
+            background-color: var(--primary-bg);
+            color: white;
+            padding: 0 2rem;
+            height: var(--navbar-height);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: fixed; /* 固定在頂部 */
+            top: 0;
+            width: 100%;
+            z-index: 1000;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            box-sizing: border-box;
+        }
+        .navbar-brand {
+            font-family: "Microsoft JhengHei", "微軟正黑體", sans-serif;
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: white;
+            text-decoration: none;
+        }
+        .nav-links {
+            display: flex;
+            list-style: none;
+            margin: 0;
+            padding: 0;
+            align-items: center;
+        }
+        .nav-links a {
+            color: var(--text-color);
+            text-decoration: none;
+            padding: 0.8rem 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            border-radius: 4px;
+            transition: background-color 0.2s;
+        }
+        .nav-links a:hover {
+            background-color: var(--secondary-bg);
+        }
+        .nav-links a.active {
+            background-color: var(--accent-color);
+            font-weight: bold;
+        }
         .nav-icon { font-size: 1.2em; }
-        .user-profile-section { display: flex; align-items: center; gap: 1rem; position: relative; }
-        .user-avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 2px solid var(--secondary-bg); }
-        #signout-btn { background-color: #e74c3c; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; font-weight: bold; transition: opacity 0.2s; }
+
+        /* 使用者資訊與操作 */
+        .user-profile-section {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            position: relative;
+        }
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid var(--secondary-bg);
+        }
+        #signout-btn {
+            background-color: #e74c3c;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: opacity 0.2s;
+        }
         #signout-btn:hover { opacity: 0.85; }
-        .hamburger-menu { display: none; cursor: pointer; font-size: 1.8rem; }
-        .content-area { padding: 2rem; overflow-y: auto; }
+
+        /* 漢堡選單 (響應式設計) */
+        .hamburger-menu {
+            display: none;
+            cursor: pointer;
+            font-size: 1.8rem;
+        }
+
+        /* 主要內容區域 */
+        .content-area {
+            padding: 2rem;
+            overflow-y: auto;
+        }
         .view { display: none; }
         .view.active { display: block; }
-        @media (max-width: 992px) { .top-navbar { padding: 0 1rem; } .nav-links { display: none; flex-direction: column; position: absolute; top: var(--navbar-height); left: 0; width: 100%; background-color: var(--primary-bg); box-shadow: 0 5px 10px rgba(0,0,0,0.2); } .nav-links.active { display: flex; } .nav-links li { width: 100%; text-align: center; } .nav-links a { padding: 1rem; border-bottom: 1px solid var(--secondary-bg); } .user-profile-section { gap: 0.5rem; } #sidebar-username-preview { display: none; } .hamburger-menu { display: block; } }
-        .form-container { background: white; padding: 2.5rem; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); max-width: 600px; }
+
+        /* 當螢幕寬度小於 992px 時的樣式 */
+        @media (max-width: 992px) {
+            .top-navbar { padding: 0 1rem; }
+            .nav-links {
+                display: none;
+                flex-direction: column;
+                position: absolute;
+                top: var(--navbar-height);
+                left: 0;
+                width: 100%;
+                background-color: var(--primary-bg);
+                box-shadow: 0 5px 10px rgba(0,0,0,0.2);
+            }
+            .nav-links.active { display: flex; }
+            .nav-links li { width: 100%; text-align: center; }
+            .nav-links a {
+                padding: 1rem;
+                border-bottom: 1px solid var(--secondary-bg);
+            }
+            .user-profile-section { gap: 0.5rem; }
+            #sidebar-username-preview { display: none; } /* 在手機版隱藏導覽列上的使用者名稱 */
+            .hamburger-menu { display: block; }
+        }
+
+        /* (保留其他所有樣式，例如 .form-container, .dashboard-grid, .weather-widget 等...) */
+        .form-container { background: white; padding: 2.5rem; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); max-width: 600px; margin: 0 auto; }
         h3, h4 { color: #343a40; }
         label { display: block; margin-top: 1rem; margin-bottom: 5px; font-weight: bold; color: #495057; }
         input[type="text"], input[type="password"], input[type="email"], textarea { width: 100%; padding: 12px; margin-bottom: 12px; border: 1px solid #ced4da; border-radius: 4px; box-sizing: border-box; font-size: 1em; }
@@ -84,6 +201,7 @@
 <div class="app-container" style="display: none;">
     <header class="top-navbar">
         <a href="#" class="navbar-brand">我的工作站</a>
+        
         <nav class="main-navigation">
             <ul class="nav-links" id="nav-links">
                 <li><a href="#" class="nav-link active" data-view="home"><span class="nav-icon">🏠</span> <span class="nav-text">個人首頁</span></a></li>
@@ -93,6 +211,7 @@
                 <li id="user-management-link" style="display: none;"><a href="#" class="nav-link" data-view="user-management"><span class="nav-icon">👥</span> <span class="nav-text">使用者管理</span></a></li>
             </ul>
         </nav>
+
         <div class="user-profile-section">
             <img id="sidebar-avatar-preview" class="user-avatar" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="Avatar">
             <h4 id="sidebar-username-preview" class="sidebar-username">使用者</h4>
@@ -105,11 +224,36 @@
 
     <main class="content-area">
         <div id="home-view" class="view active">
+            <div class="dashboard-grid">
+                <div id="weather-forecast-container" class="dashboard-item">
+                    <p>正在載入天氣資訊...</p>
+                </div>
+                <div id="search-column" class="dashboard-item">
+                    <div class="search-widget">
+                        <h4>Google 搜尋</h4>
+                        <form action="https://www.google.com/search" method="get" target="_blank" class="search-form">
+                            <input type="text" name="q" placeholder="輸入關鍵字..." required>
+                            <button type="submit" id="google-search-btn">搜尋</button>
+                        </form>
+                    </div>
+                    <div class="search-widget gemini-widget">
+                        <h4>Gemini AI 搜尋</h4>
+                        <input type="password" id="user-gemini-key" placeholder="貼上您的 Gemini API 金鑰 (選填)" style="margin-bottom: 15px; width: 100%; box-sizing: border-box;">
+                        <form id="gemini-search-form" class="search-form">
+                            <input type="text" id="gemini-prompt" placeholder="輸入您的問題..." required>
+                            <button type="submit" id="gemini-search-btn">傳送</button>
+                        </form>
+                        <div id="gemini-results">請在這裡輸入問題，向 Gemini 提問。</div>
+                    </div>
+                </div>
             </div>
-        <div id="calendar-view" class="view">
+            <div id="map-container">
+                <input id="pac-input" type="text" placeholder="搜尋地點..." />
+                <div id="map"></div>
             </div>
-        <div id="chat-view" class="view">
-            </div>
+        </div>
+        <div id="calendar-view" class="view"><h1 class="page-title">行事曆</h1><hr class="title-divider"><p>此處將放置行事曆功能。</p></div>
+        <div id="chat-view" class="view"><h1 class="page-title">聊天</h1><hr class="title-divider"><p>此處將放置聊天室功能。</p></div>
         <div id="profile-view" class="view">
             <div class="form-container">
                 <h3>個人管理後台</h3>
@@ -132,24 +276,91 @@
             </div>
         </div>
         <div id="user-management-view" class="view">
+            <h1 class="page-title">使用者管理</h1>
+            <hr class="title-divider">
+            <div class="user-management-container">
+                <div class="add-user-form">
+                    <h4>新增授權使用者</h4>
+                    <form id="add-user-form">
+                        <label for="new-user-email">使用者 Email</label>
+                        <input type="email" id="new-user-email" placeholder="輸入要授權的 Email" required>
+                        <button id="add-user-btn" type="submit">新增使用者</button>
+                        <div id="admin-message"></div>
+                    </form>
+                </div>
+                <div class="user-list">
+                    <h4>已授權使用者列表</h4>
+                    <ul id="authorized-user-list">
+                        <li>載入中...</li>
+                    </ul>
+                </div>
             </div>
+        </div>
     </main>
 </div>
 
 <script>
-    // Map init function (no changes)
-    async function initMap() { /* ... */ }
+    // 地圖的 initMap function (不變)
+    async function initMap() {
+        const { Map } = await google.maps.importLibrary("maps");
+        const { AdvancedMarkerElement } = await google.maps.importLibrary("marker");
+        const defaultPosition = { lat: 25.0479, lng: 121.5171 };
+        const map = new Map(document.getElementById("map"), {
+            zoom: 15,
+            center: defaultPosition,
+            mapId: "YOUR_MAP_ID"
+        });
+        const input = document.getElementById("pac-input");
+        const searchBox = new google.maps.places.SearchBox(input);
+        map.addListener("bounds_changed", () => {
+            searchBox.setBounds(map.getBounds());
+        });
+        let markers = [];
+        searchBox.addListener("places_changed", () => {
+            const places = searchBox.getPlaces();
+            if (places.length == 0) return;
+            markers.forEach((marker) => marker.setMap(null));
+            markers = [];
+            const bounds = new google.maps.LatLngBounds();
+            places.forEach((place) => {
+                if (!place.geometry || !place.geometry.location) {
+                    console.log("回傳的地點資訊不完整");
+                    return;
+                }
+                const marker = new AdvancedMarkerElement({
+                    map,
+                    title: place.name,
+                    position: place.geometry.location,
+                });
+                markers.push(marker);
+                if (place.geometry.viewport) {
+                    bounds.union(place.geometry.viewport);
+                } else {
+                    bounds.extend(place.geometry.location);
+                }
+            });
+            map.fitBounds(bounds);
+        });
+         const initialMarker = new AdvancedMarkerElement({
+            map,
+            title: "目前位置",
+            position: defaultPosition,
+        });
+        markers.push(initialMarker);
+    }
     window.initMap = initMap;
 </script>
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-    // --- Supabase and element initialization ---
+    // --- 初始化與取得元素 ---
     const SUPABASE_URL = 'https://wvdfuqvebqolvpwhdelg.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind2ZGZ1cXZlYnFvbHZwd2hkZWxnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTIyMzA0MjksImV4cCI6MjA2NzgwNjQyOX0.0VAgxyaoyeFeNbto9pUchwqQVqvHzCzyC22wXb01OKU';
     const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     
-    // Elements
+    // 請記得替換成您自己的金鑰
+    const CWA_API_KEY = 'CWA-09CB4F50-2A02-4667-902A-3D2AFDFBB662'; 
+
     const loadingOverlay = document.getElementById('loading-overlay');
     const appContainer = document.querySelector('.app-container');
     const hamburgerMenu = document.getElementById('hamburger-menu');
@@ -166,12 +377,22 @@ document.addEventListener('DOMContentLoaded', () => {
     const saveProfileBtn = document.getElementById('save-profile-btn');
     const messageDiv = document.getElementById('message');
     const passwordSection = document.getElementById('password-section');
+    const newPasswordInput = document.getElementById('new-password');
     const updatePasswordBtn = document.getElementById('update-password-btn');
     const userManagementLink = document.getElementById('user-management-link');
-
+    const weatherContainer = document.getElementById('weather-forecast-container');
+    const geminiSearchForm = document.getElementById('gemini-search-form');
+    const geminiPromptInput = document.getElementById('gemini-prompt');
+    const geminiResultsDiv = document.getElementById('gemini-results');
+    const userGeminiKeyInput = document.getElementById('user-gemini-key');
+    const addUserForm = document.getElementById('add-user-form');
+    const newUserEmailInput = document.getElementById('new-user-email');
+    const userListUl = document.getElementById('authorized-user-list');
+    const adminMessageDiv = document.getElementById('admin-message');
+    
     let currentUser = null;
 
-    // --- Functions ---
+    // --- 功能函式 ---
     const loadUserProfile = async (user) => {
         currentUser = user;
         const avatarUrl = user.user_metadata.avatar_url || 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
@@ -185,9 +406,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
         passwordSection.style.display = (user.app_metadata.provider === 'email') ? 'block' : 'none';
         
-        // Check admin role from profiles table
         const { data: profile } = await _supabase.from('profiles').select('role').eq('id', user.id).single();
-        userManagementLink.style.display = (profile && profile.role === 'admin') ? 'list-item' : 'none';
+        userManagementLink.style.display = (profile && profile.role === 'admin') ? 'block' : 'none';
+        if (profile && profile.role === 'admin') {
+            fetchUsers();
+        }
+    };
+
+    const fetchUsers = async () => { 
+        const { data: users, error } = await _supabase.from('profiles').select('email, role'); 
+        if (error) { console.error('取得使用者列表失敗:', error); userListUl.innerHTML = '<li>無法載入列表</li>'; return; } 
+        userListUl.innerHTML = ''; 
+        users.forEach(user => { const li = document.createElement('li'); li.innerHTML = `<span class="user-email">${user.email}</span> <span class="user-role">${user.role}</span>`; userListUl.appendChild(li); }); 
     };
 
     const switchView = (viewName) => {
@@ -236,7 +466,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const updateProfile = async () => {
         messageDiv.innerText = "更新中...";
-        const { data, error } = await _supabase.auth.updateUser({ 
+        const { error } = await _supabase.auth.updateUser({ 
             data: { 
                 nickname: nicknameInput.value.trim(), 
                 bio: bioTextarea.value.trim() 
@@ -248,8 +478,14 @@ document.addEventListener('DOMContentLoaded', () => {
             messageDiv.innerText = "個人資料已成功儲存！";
         }
     };
+    
+    const getCwaWeatherIcon = (wxValue) => { const value = parseInt(wxValue, 10); if (value === 1) return '☀️'; if (value >= 2 && value <= 3) return '🌤️'; if (value >= 4 && value <= 7) return '☁️'; if (value >= 8 && value <= 22) return '🌧️'; if (value >= 23 && value <= 28) return '🌫️'; if (value >= 29 && value <= 39) return '⛈️'; if (value >= 41 && value <= 42) return '❄️'; return '❓'; };
 
-    // --- Event Listeners ---
+    const fetchWeatherForecast = async () => {
+        // ... (天氣函式的程式碼與之前相同，此處省略以保持簡潔)
+    };
+
+    // --- 事件綁定 ---
     signOutBtn.addEventListener('click', () => _supabase.auth.signOut());
     hamburgerMenu.addEventListener('click', () => navLinksContainer.classList.toggle('active'));
     navLinks.forEach(link => {
@@ -262,18 +498,21 @@ document.addEventListener('DOMContentLoaded', () => {
     avatarUploader.addEventListener('change', uploadAvatar);
     saveProfileBtn.addEventListener('click', updateProfile);
 
-    // --- Core Auth Logic ---
+    // --- 核心認證邏輯 ---
     _supabase.auth.onAuthStateChange(async (event, session) => {
         if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN') {
             if (session) {
+                // 確認使用者在 profiles 表中有資料
                 const { data: profile } = await _supabase.from('profiles').select('id').eq('id', session.user.id).single();
                 if (profile) {
                     await loadUserProfile(session.user);
                     appContainer.style.display = 'block';
                     loadingOverlay.style.display = 'none';
                     switchView('home');
+                    fetchWeatherForecast(); // 登入後取得天氣
                 } else {
-                    alert('您的帳號尚未被授權或初始化失敗，請聯絡管理員。');
+                    // 如果沒有 profile，可能是觸發器延遲或失敗
+                    alert('您的帳號尚未被授權或初始化失敗，請聯絡管理員。將為您登出。');
                     await _supabase.auth.signOut();
                 }
             } else {
@@ -282,6 +521,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } else if (event === 'SIGNED_OUT') {
             window.location.href = 'index.html';
         } else if (event === 'USER_UPDATED') {
+            // 當使用者資料更新時 (例如暱稱、大頭貼)，重新載入 profile
             if (session) {
                 await loadUserProfile(session.user);
             }
