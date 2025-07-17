@@ -8,104 +8,27 @@
     <script async src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBfAUYXPVz9lqN5QPyzcNmeCg5ect9ZNcA&callback=initMap&libraries=places,marker&loading=async"></script>
     <style>
         /* 全局與佈局 */
-        :root {
-            --top-nav-height: 60px;
-        }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans TC", sans-serif;
-            margin: 0;
-            background-color: #f4f7f9;
-        }
-        #loading-overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background-color: #f4f7f9;
-            display: flex; justify-content: center; align-items: center;
-            font-size: 1.2rem; color: #2c3e50;
-            z-index: 9999;
-        }
-        .app-container {
-            padding-top: var(--top-nav-height); /* 為頂部導覽列預留空間 */
-        }
+        :root { --sidebar-width: 240px; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans TC", sans-serif; margin: 0; background-color: #f4f7f9; }
+        .app-container { display: flex; height: 100vh; }
 
-        /* --- 新的頂部導覽列樣式 --- */
-        .top-nav {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: var(--top-nav-height);
-            background-color: #2c3e50;
-            color: white;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 0 2rem;
-            box-sizing: border-box;
-            z-index: 1000;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        .top-nav-left, .top-nav-right {
-            display: flex;
-            align-items: center;
-            gap: 1.5rem;
-        }
-        .top-nav-brand {
-            font-family: "Microsoft JhengHei", "微軟正黑體", sans-serif;
-            font-size: 1.5rem;
-            font-weight: bold;
-            color: #fff;
-            text-decoration: none;
-        }
-        .top-nav-links ul {
-            list-style: none;
-            padding: 0;
-            margin: 0;
-            display: flex;
-            gap: 1rem;
-        }
-        .top-nav-links a {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            padding: 0.5rem 1rem;
-            color: #ecf0f1;
-            text-decoration: none;
-            transition: background-color 0.2s;
-            border-radius: 4px;
-        }
-        .top-nav-links a:hover {
-            background-color: #34495e;
-        }
-        .top-nav-links a.active {
-            background-color: #1abc9c;
-            color: white;
-        }
-        .top-nav-user-info {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-        }
-        .top-nav-avatar {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            object-fit: cover;
-            border: 2px solid #34495e;
-        }
-        .top-nav-username {
-            font-weight: bold;
-        }
-        
-        /* 主要內容區域 */
-        .content-area {
-            flex-grow: 1;
-            padding: 2rem;
-            overflow-y: auto;
-        }
+        /* ... 其他 CSS 樣式 (與上一版相同) ... */
+        #loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: #f4f7f9; display: flex; justify-content: center; align-items: center; font-size: 1.2rem; color: #2c3e50; z-index: 9999; }
+        .sidebar { width: var(--sidebar-width); background-color: #2c3e50; color: white; display: flex; flex-direction: column; transition: all 0.3s ease-in-out; }
+        .sidebar-main-title { font-family: "Microsoft JhengHei", "微軟正黑體", sans-serif; font-size: 20pt; font-weight: bold; text-align: center; color: #fff; padding: 1.5rem 1rem; margin: 0; border-bottom: 1px solid #34495e; }
+        .sidebar-header { text-align: center; padding: 1.5rem 1rem; }
+        .sidebar-avatar { width: 80px; height: 80px; border-radius: 50%; object-fit: cover; border: 3px solid #34495e; }
+        .sidebar-username { margin-top: 0.75rem; font-weight: bold; font-size: 1.1em; }
+        .sidebar-nav { flex-grow: 1; }
+        .sidebar-nav ul { list-style: none; padding: 0; margin: 0; }
+        .sidebar-nav a { display: flex; align-items: center; gap: 1rem; padding: 1rem 1.5rem; color: #ecf0f1; text-decoration: none; transition: background-color 0.2s; border-left: 3px solid transparent; }
+        .sidebar-nav a:hover { background-color: #34495e; }
+        .sidebar-nav a.active { background-color: #1abc9c; border-left-color: #16a085; }
+        .sidebar-footer { padding: 1.5rem; }
+        .nav-icon { font-size: 1.2em; }
+        .content-area { flex-grow: 1; padding: 2rem; overflow-y: auto; transition: all 0.3s ease-in-out; }
         .view { display: none; }
         .view.active { display: block; }
-        
-        /* 其他組件樣式 (大致不變) */
         .form-container { background: white; padding: 2.5rem; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); max-width: 600px; }
         h3, h4 { color: #343a40; }
         label { display: block; margin-top: 1rem; margin-bottom: 5px; font-weight: bold; color: #495057; }
@@ -113,11 +36,19 @@
         button { width: 100%; padding: 12px; margin-top: 10px; border: none; border-radius: 4px; color: white; font-weight: bold; cursor: pointer; font-size: 1em; }
         #save-profile-btn, #add-user-btn { background-color: #007bff; }
         #update-password-btn { background-color: #17a2b8; }
-        #signout-btn { background-color: #e74c3c; width: auto; padding: 8px 16px; font-size: 0.9em; }
+        #signout-btn { background-color: #e74c3c; width: auto; display: block; text-align: center; }
         #message, #admin-message { margin-top: 15px; font-weight: bold; min-height: 1.2em; text-align: center; }
         hr { border: 0; border-top: 1px solid #dee2e6; margin: 20px 0; }
-
-        /* 頁面標題和儀表板樣式 */
+        #sidebar-toggle-btn { background-color: #34495e; width: 100%; margin-bottom: 1rem; }
+        .app-container.sidebar-collapsed .sidebar { width: 88px; }
+        .app-container.sidebar-collapsed .sidebar-main-title { font-size: 0; padding: 0; border: none;}
+        .app-container.sidebar-collapsed .sidebar-header { padding: 1.5rem 0.5rem; }
+        .app-container.sidebar-collapsed .sidebar-avatar { width: 50px; height: 50px; }
+        .app-container.sidebar-collapsed .sidebar-username { display: none; }
+        .app-container.sidebar-collapsed .sidebar-nav a { justify-content: center; padding: 1rem 0; }
+        .app-container.sidebar-collapsed .nav-text { display: none; }
+        .app-container.sidebar-collapsed #sidebar-toggle-btn::after { content: "展開"; }
+        .app-container.sidebar-collapsed #sidebar-toggle-btn { font-size: 0; }
         .page-title { font-family: "Microsoft JhengHei", "微軟正黑體", sans-serif; font-size: 20pt; font-weight: bold; text-align: center; color: #2c3e50; margin-top: 0; margin-bottom: 1rem; }
         .title-divider { border: 0; border-top: 1px solid #e0e0e0; margin-bottom: 2rem; }
         .dashboard-grid { display: flex; flex-wrap: wrap; gap: 2rem; align-items: stretch; }
@@ -162,6 +93,7 @@
             box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
         }
         
+        /* 使用者管理介面樣式 */
         .user-management-container { display: flex; gap: 2rem; flex-wrap: wrap; }
         .user-list, .add-user-form { flex: 1; min-width: 300px; background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
         .user-list ul { list-style: none; padding: 0; }
@@ -169,7 +101,6 @@
         .user-list li:last-child { border-bottom: none; }
         .user-list .user-email { color: #333; }
         .user-list .user-role { background-color: #eee; color: #555; padding: 3px 8px; border-radius: 12px; font-size: 0.8em; }
-
     </style>
 </head>
 <body>
@@ -177,27 +108,26 @@
 <div id="loading-overlay">載入中...</div>
 
 <div class="app-container" style="display: none;">
-    <header class="top-nav">
-        <div class="top-nav-left">
-            <a href="#" class="top-nav-brand">我的工作站</a>
-            <nav class="top-nav-links">
-                <ul>
-                    <li><a href="#" class="nav-link active" data-view="home"><span class="nav-icon">🏠</span> <span class="nav-text">個人首頁</span></a></li>
-                    <li><a href="#" class="nav-link" data-view="calendar"><span class="nav-icon">🗓️</span> <span class="nav-text">行事曆</span></a></li>
-                    <li><a href="#" class="nav-link" data-view="chat"><span class="nav-icon">💬</span> <span class="nav-text">聊天</span></a></li>
-                    <li><a href="#" class="nav-link" data-view="profile"><span class="nav-icon">⚙️</span> <span class="nav-text">個人管理</span></a></li>
-                    <li id="user-management-link" style="display: none;"><a href="#" class="nav-link" data-view="user-management"><span class="nav-icon">👥</span> <span class="nav-text">使用者管理</span></a></li>
-                </ul>
-            </nav>
+    <aside class="sidebar">
+        <h1 class="sidebar-main-title">我的工作站</h1>
+        <div class="sidebar-header">
+            <img id="sidebar-avatar-preview" class="sidebar-avatar" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="Avatar">
+            <h4 id="sidebar-username-preview" class="sidebar-username">使用者</h4>
         </div>
-        <div class="top-nav-right">
-            <div class="top-nav-user-info">
-                <img id="top-nav-avatar" class="top-nav-avatar" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="Avatar">
-                <span id="top-nav-username" class="top-nav-username">使用者</span>
-            </div>
+        <nav class="sidebar-nav">
+            <ul>
+                <li><a href="#" class="nav-link active" data-view="home"><span class="nav-icon">🏠</span> <span class="nav-text">個人首頁</span></a></li>
+                <li><a href="#" class="nav-link" data-view="calendar"><span class="nav-icon">🗓️</span> <span class="nav-text">行事曆</span></a></li>
+                <li><a href="#" class="nav-link" data-view="chat"><span class="nav-icon">💬</span> <span class="nav-text">聊天</span></a></li>
+                <li><a href="#" class="nav-link" data-view="profile"><span class="nav-icon">⚙️</span> <span class="nav-text">個人管理後台</span></a></li>
+                <li id="user-management-link" style="display: none;"><a href="#" class="nav-link" data-view="user-management"><span class="nav-icon">👥</span> <span class="nav-text">使用者管理</span></a></li>
+            </ul>
+        </nav>
+        <div class="sidebar-footer">
+            <button id="sidebar-toggle-btn">收合</button>
             <button id="signout-btn">登出</button>
         </div>
-    </header>
+    </aside>
 
     <main class="content-area">
         <div id="home-view" class="view active">
@@ -240,32 +170,58 @@
     async function initMap() {
         const { Map, InfoWindow } = await google.maps.importLibrary("maps");
         const { AdvancedMarkerElement } = await google.maps.importLibrary("marker");
+
+        // 預設中心點（例如：台北車站）
         const defaultPosition = { lat: 25.0479, lng: 121.5171 };
+
         const map = new Map(document.getElementById("map"), {
-            zoom: 15, center: defaultPosition, mapId: "YOUR_MAP_ID"
+            zoom: 15,
+            center: defaultPosition,
+            mapId: "YOUR_MAP_ID" // 您可以為您的地圖設定一個 ID
         });
+
         const input = document.getElementById("pac-input");
         const searchBox = new google.maps.places.SearchBox(input);
+
+        // 將搜尋框偏向目前地圖的可視範圍
         map.addListener("bounds_changed", () => {
             searchBox.setBounds(map.getBounds());
         });
+
         let markers = [];
+
+        // 監聽使用者從搜尋建議中選擇地點的事件
         searchBox.addListener("places_changed", () => {
             const places = searchBox.getPlaces();
-            if (places.length == 0) return;
-            markers.forEach((marker) => marker.setMap(null));
+
+            if (places.length == 0) {
+                return;
+            }
+
+            // 清除舊的標記
+            markers.forEach((marker) => {
+                marker.setMap(null);
+            });
             markers = [];
+
             const bounds = new google.maps.LatLngBounds();
+
             places.forEach((place) => {
                 if (!place.geometry || !place.geometry.location) {
                     console.log("回傳的地點資訊不完整");
                     return;
                 }
+
+                // 為每個地點建立一個新的標記
                 const marker = new AdvancedMarkerElement({
-                    map, title: place.name, position: place.geometry.location,
+                    map,
+                    title: place.name,
+                    position: place.geometry.location,
                 });
                 markers.push(marker);
+
                 if (place.geometry.viewport) {
+                    // 只針對有 viewport 的地點調整地圖視野
                     bounds.union(place.geometry.viewport);
                 } else {
                     bounds.extend(place.geometry.location);
@@ -273,7 +229,14 @@
             });
             map.fitBounds(bounds);
         });
-        markers.push(new AdvancedMarkerElement({ map, title: "目前位置", position: defaultPosition }));
+
+         // 初始時，先在地圖中心點放置一個標記
+         const initialMarker = new AdvancedMarkerElement({
+            map,
+            title: "目前位置",
+            position: defaultPosition,
+        });
+        markers.push(initialMarker);
     }
     window.initMap = initMap;
 </script>
@@ -285,16 +248,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind2ZGZ1cXZlYnFvbHZwd2hkZWxnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTIyMzA0MjksImV4cCI6MjA2NzgwNjQyOX0.0VAgxyaoyeFeNbto9pUchwqQVqvHzCzyC22wXb01OKU';
     const { createClient } = supabase;
     const _supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    const CWA_API_KEY = 'CWA-09CB4F50-2A02-4667-902A-3D2AFDFBB662'; 
     
+    const CWA_API_KEY = 'CWA-09CB4F50-2A02-4667-902A-3D2AFDFBB662'; 
+
     const loadingOverlay = document.getElementById('loading-overlay');
     const appContainer = document.querySelector('.app-container');
     const weatherContainer = document.getElementById('weather-forecast-container');
-    
-    // --- 新的頂部導覽列元素 ---
-    const topNavAvatar = document.getElementById('top-nav-avatar');
-    const topNavUsername = document.getElementById('top-nav-username');
-
+    const sidebarToggleBtn = document.getElementById('sidebar-toggle-btn');
+    const sidebarAvatar = document.getElementById('sidebar-avatar-preview');
+    const sidebarUsername = document.getElementById('sidebar-username-preview');
     const navLinks = document.querySelectorAll('.nav-link');
     const views = document.querySelectorAll('.view');
     const signOutBtn = document.getElementById('signout-btn');
@@ -323,15 +285,17 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- 功能函式 ---
     const loadUserProfile = async (user) => {
         currentUser = user;
+        
         const { data: profile, error } = await _supabase.from('profiles').select('*').eq('id', user.id).single();
         if (error && error.code !== 'PGRST116') { console.error('讀取 profile 失敗:', error); return; }
+        
         currentUserProfile = profile;
+
         const nickname = user.user_metadata.nickname || user.email.split('@')[0];
         const avatarUrl = user.user_metadata.avatar_url || 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMjAiIGhlaWdodD0iMTIwIiB2aWV3Qm94PSIwIDAgMTIwIDEyMCI+CiAgPHJlY3Qgd2lkdGg9IjEyMCIgaGVpZ2h0PSIxMjAiIHN0eWxlPSJmaWxsOiNjZWMwY2U7IiAvPgogIDxwYXRoIGQ9Ik02MCA2MEM3Ni41NjkgNjAgOTAgNDYuNTY5IDkwIDMwQzkwIDEzLjQzMSA3Ni41NjkgMCA2MCAwQzQzLjQzMSAwIDMwIDEzLjQzMSA5MCAzMEMzMCA0Ni41NjkgNDMuNDMxIDYwIDYwIDYwWk02MCA3MEMzNy45MDkgNzEgMjAgODguOTA5IDIwIDExMVYxMjBIMTAwVjExMUMxMDAgODguOTA5IDgyLjA5MSA3MSA2MCA3MVoiIGZpbGw9IiNhYWFiYjAiLz4KPC9zdmc+';
         
-        // 更新頂部導覽列和個人資料頁面的頭像與名稱
-        topNavAvatar.src = avatarUrl;
-        topNavUsername.innerText = nickname;
+        sidebarAvatar.src = avatarUrl;
+        sidebarUsername.innerText = nickname;
         profileAvatar.src = avatarUrl;
         nicknameInput.value = user.user_metadata.nickname || '';
         bioTextarea.value = user.user_metadata.bio || '';
@@ -342,7 +306,7 @@ document.addEventListener('DOMContentLoaded', () => {
             passwordSection.style.display = 'none';
         }
         if (profile && profile.role === 'admin') {
-            userManagementLink.style.display = 'list-item'; // 改為 list-item 才會顯示
+            userManagementLink.style.display = 'block';
             fetchUsers();
         } else {
             userManagementLink.style.display = 'none';
@@ -364,30 +328,54 @@ document.addEventListener('DOMContentLoaded', () => {
             weatherContainer.innerHTML = `<p style="color: red;">請在程式碼中填入您的氣象署 API 授權碼。</p>`;
             return;
         }
+
         const city = '臺北市';
         const dataId = 'F-C0032-001'; 
         const apiUrl = `https://opendata.cwa.gov.tw/api/v1/rest/datastore/${dataId}?Authorization=${CWA_API_KEY}&locationName=${encodeURIComponent(city)}&elementName=Wx,PoP,MinT,MaxT`;
 
         try {
             const response = await fetch(apiUrl);
-            if (!response.ok) throw new Error(`HTTP 錯誤! 狀態: ${response.status}`);
+            if (!response.ok) {
+                throw new Error(`HTTP 錯誤! 狀態: ${response.status}`);
+            }
+
             const data = await response.json();
-            if (data.success !== 'true') throw new Error(data.error?.message || 'API 回應失敗');
+            
+            if (data.success !== 'true') {
+                throw new Error(data.error?.message || 'API 回應失敗');
+            }
+            
             if (!data.records || !Array.isArray(data.records.location) || data.records.location.length === 0) {
                  throw new Error('API 回應成功但資料結構不正確或無資料');
             }
+
             const locationData = data.records.location[0];
             const weatherElements = {};
             locationData.weatherElement.forEach(elem => {
                 weatherElements[elem.elementName] = elem.time;
             });
+            
             const todayWx = weatherElements.Wx[0].parameter.parameterName;
             const todayPop = weatherElements.PoP[0].parameter.parameterName;
             const todayMaxT = weatherElements.MaxT[0].parameter.parameterName;
             const todayMinT = weatherElements.MinT[0].parameter.parameterName;
             const todayWxValue = weatherElements.Wx[0].parameter.parameterValue;
 
-            const todayHtml = `<div class="weather-today"><div class="weather-today-main"><div class="weather-today-icon">${getCwaWeatherIcon(todayWxValue)}</div><div class="weather-today-details"><div class="condition">${todayWx}</div><div class="pop">降雨機率：${todayPop}%</div></div></div><div style="text-align: right;"><div class="weather-today-temp">${todayMinT}° / ${todayMaxT}°</div><div class="weather-today-location">${city}</div></div></div>`;
+            const todayHtml = `
+                <div class="weather-today">
+                    <div class="weather-today-main">
+                        <div class="weather-today-icon">${getCwaWeatherIcon(todayWxValue)}</div>
+                        <div class="weather-today-details">
+                            <div class="condition">${todayWx}</div>
+                            <div class="pop">降雨機率：${todayPop}%</div>
+                        </div>
+                    </div>
+                    <div style="text-align: right;">
+                        <div class="weather-today-temp">${todayMinT}° / ${todayMaxT}°</div>
+                        <div class="weather-today-location">${city}</div>
+                    </div>
+                </div>`;
+            
             let forecastHtml = '<div class="weather-forecast">';
             for (let i = 1; i < weatherElements.Wx.length; i++) {
                 const forecastDate = new Date(weatherElements.Wx[i].startTime);
@@ -396,9 +384,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 const minT = weatherElements.MinT[i].parameter.parameterName;
                 const maxT = weatherElements.MaxT[i].parameter.parameterName;
                 const pop = weatherElements.PoP[i].parameter.parameterName;
-                forecastHtml += `<div class="forecast-day"><div class="date">${day}</div><div class="icon">${icon}</div><div class="temp">${minT}°/${maxT}°</div><div class="pop">💧 ${pop}%</div></div>`;
+                forecastHtml += `
+                    <div class="forecast-day">
+                        <div class="date">${day}</div>
+                        <div class="icon">${icon}</div>
+                        <div class="temp">${minT}°/${maxT}°</div>
+                        <div class="pop">💧 ${pop}%</div>
+                    </div>`;
             }
             forecastHtml += '</div>';
+
             weatherContainer.innerHTML = `<div class="weather-widget">${todayHtml}${forecastHtml}</div>`;
 
         } catch (error) {
@@ -409,7 +404,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- 事件綁定 ---
     signOutBtn.addEventListener('click', signOut);
-    navLinks.forEach(link => { link.addEventListener('click', (e) => { e.preventDefault(); const viewName = link.getAttribute('data-view'); switchView(viewName); }); });
+    sidebarToggleBtn.addEventListener('click', () => { appContainer.classList.toggle('sidebar-collapsed'); });
+    navLinks.forEach(link => {
+        link.addEventListener('click', (e) => {
+            e.preventDefault();
+            const viewName = link.getAttribute('data-view');
+            switchView(viewName);
+        });
+    });
     profileAvatar.addEventListener('click', () => avatarUploader.click());
     avatarUploader.addEventListener('change', uploadAvatar);
     saveProfileBtn.addEventListener('click', updateProfile);
@@ -425,7 +427,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (session && session.user) {
                 const { data: profile } = await _supabase.from('profiles').select('id').eq('id', session.user.id).single();
                 if (profile) {
-                    appContainer.style.display = 'block'; // 改為 block
+                    appContainer.style.display = 'flex';
                     await loadUserProfile(session.user);
                     switchView('home');
                     fetchWeatherForecast();
