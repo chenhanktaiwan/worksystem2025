@@ -20,7 +20,7 @@
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans TC", sans-serif;
             margin: 0;
             background-color: var(--body-bg);
-            padding-top: var(--navbar-height); /* 為固定導覽列預留空間 */
+            padding-top: var(--navbar-height);
         }
         #loading-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
@@ -38,7 +38,7 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            position: fixed; /* 固定在頂部 */
+            position: fixed;
             top: 0;
             width: 100%;
             z-index: 1000;
@@ -280,7 +280,9 @@
     // 地圖的 initMap function (不變)
     async function initMap() {
         if (typeof google === 'undefined' || typeof google.maps === 'undefined') {
-            console.error("Google Maps script not loaded.");
+            console.error("Google Maps script not loaded, cannot init map.");
+            const mapDiv = document.getElementById("map");
+            if(mapDiv) mapDiv.innerHTML = "<p style='text-align:center;color:red;'>無法載入 Google Maps。</p>";
             return;
         }
         const { Map } = await google.maps.importLibrary("maps");
@@ -490,7 +492,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const getCwaWeatherIcon = (wxValue) => { const value = parseInt(wxValue, 10); if (value === 1) return '☀️'; if (value >= 2 && value <= 3) return '🌤️'; if (value >= 4 && value <= 7) return '☁️'; if (value >= 8 && value <= 22) return '🌧️'; if (value >= 23 && value <= 28) return '🌫️'; if (value >= 29 && value <= 39) return '⛈️'; if (value >= 41 && value <= 42) return '❄️'; return '❓'; };
 
     const fetchWeatherForecast = async () => {
-        if (!CWA_API_KEY || CWA_API_KEY === 'YOUR_CWA_API_KEY') {
+        if (!CWA_API_KEY || CWA_API_KEY === 'CWA-09CB4F50-2A02-4667-902A-3D2AFDFBB662') {
             weatherContainer.innerHTML = `<p style="color: red; text-align: center;">請在程式碼中填入有效的氣象署 API 授權碼。</p>`;
             return;
         }
@@ -551,37 +553,43 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- 核心認證邏輯 ---
     _supabase.auth.onAuthStateChange(async (event, session) => {
         if (session && session.user) {
+            // 最關鍵的一步：從資料庫查詢使用者 Profile
             const { data: profile, error } = await _supabase
                 .from('profiles')
                 .select('role')
                 .eq('id', session.user.id)
                 .single();
             
+            // 處理查詢錯誤
             if (error) {
                 console.error("查詢 Profile 失敗:", error);
-                alert(`查詢使用者權限失敗，請聯絡管理員。\n錯誤: ${error.message}`);
-                await _supabase.auth.signOut();
+                alert(`查詢使用者權限失敗，請確認您的資料庫權限(RLS)設定是否正確。\n錯誤: ${error.message}`);
+                await _supabase.auth.signOut(); // 登出以避免無限循環
                 return;
             }
             
-            if (profile) {
-                if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN') {
-                    await loadUserProfile(session.user, profile.role);
-                    appContainer.style.display = 'block';
-                    loadingOverlay.style.display = 'none';
-                    switchView('home');
-                    fetchWeatherForecast();
-                    const savedGeminiKey = localStorage.getItem('geminiApiKey');
-                    if (savedGeminiKey) { userGeminiKeyInput.value = savedGeminiKey; }
-                } else if (event === 'USER_UPDATED') {
-                    await loadUserProfile(session.user, profile.role);
-                }
-            } else {
-                alert('您的帳號尚未被授權，將為您登出。');
+            // 處理查詢成功但沒有 Profile 的情況
+            if (!profile) {
+                alert('您的帳號尚未被授權，這可能是因為資料庫觸發器尚未執行或設定失敗。將為您登出。');
                 await _supabase.auth.signOut();
+                return;
+            }
+
+            // 所有驗證通過，根據不同事件更新畫面
+            if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN') {
+                await loadUserProfile(session.user, profile.role);
+                appContainer.style.display = 'block';
+                loadingOverlay.style.display = 'none';
+                switchView('home');
+                fetchWeatherForecast();
+                const savedGeminiKey = localStorage.getItem('geminiApiKey');
+                if (savedGeminiKey) { userGeminiKeyInput.value = savedGeminiKey; }
+            } else if (event === 'USER_UPDATED') {
+                await loadUserProfile(session.user, profile.role);
             }
 
         } else {
+            // 沒有 session，導向登入頁
             window.location.href = 'index.html';
         }
     });
