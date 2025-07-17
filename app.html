@@ -322,6 +322,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const addUser = async (event) => { event.preventDefault(); const email = newUserEmailInput.value.trim(); if (!email) return; adminMessageDiv.innerText = '處理中...'; const { error } = await _supabase.from('profiles').insert({ email: email, role: 'member' }); if (error) { adminMessageDiv.innerText = `新增失敗: ${error.message}`; } else { adminMessageDiv.innerText = `已成功授權 ${email}！請該使用者用此 Email 註冊/登入。`; newUserEmailInput.value = ''; fetchUsers(); } };
     const getCwaWeatherIcon = (wxValue) => { const value = parseInt(wxValue, 10); if (value === 1) return '☀️'; if (value >= 2 && value <= 3) return '🌤️'; if (value >= 4 && value <= 7) return '☁️'; if (value >= 8 && value <= 22) return '🌧️'; if (value >= 23 && value <= 28) return '🌫️'; if (value >= 29 && value <= 39) return '⛈️'; if (value >= 41 && value <= 42) return '❄️'; return '❓'; };
     
+    // -- THE ACTUAL FINAL fetchWeatherForecast Function --
     const fetchWeatherForecast = async () => {
         if (!CWA_API_KEY) {
             weatherContainer.innerHTML = `<p style="color: red;">請在程式碼中填入您的氣象署 API 授權碼。</p>`;
@@ -329,8 +330,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const city = '臺北市';
-        const dataId = 'F-D0047-091';
-        const apiUrl = `https://opendata.cwa.gov.tw/api/v1/rest/datastore/${dataId}?Authorization=${CWA_API_KEY}&locationName=${encodeURIComponent(city)}&elementName=Wx,PoP12h,T`;
+        const dataId = 'F-C0032-001'; // 使用 36小時(未來2天)預報 API，結構較為穩定
+        const apiUrl = `https://opendata.cwa.gov.tw/api/v1/rest/datastore/${dataId}?Authorization=${CWA_API_KEY}&locationName=${encodeURIComponent(city)}&elementName=Wx,PoP,MinT,MaxT`;
 
         try {
             const response = await fetch(apiUrl);
@@ -341,80 +342,24 @@ document.addEventListener('DOMContentLoaded', () => {
             const data = await response.json();
             
             if (data.success !== 'true') {
-                throw new Error(data.error?.message || 'API 回應失敗 (success 狀態不為 true)');
+                throw new Error(data.error?.message || 'API 回應失敗');
             }
             
-            if (!data.records) {
-                throw new Error('API 回應成功但缺少 "records" 欄位');
+            if (!data.records || !data.records.location || data.records.location.length === 0) {
+                 throw new Error('API 回應成功但資料結構不正確或無資料');
             }
 
-            // --- Definitive Fix based on all logs ---
-            let locationData;
-            if (data.records.locations && Array.isArray(data.records.locations) && data.records.locations.length > 0) {
-                // Structure is records -> locations (plural, lowercase L) -> [0] -> weatherElement
-                locationData = data.records.locations[0];
-            } else {
-                 throw new Error('API 回應成功但無法在其中找到有效的地區列表');
-            }
-
-            if (!locationData || !Array.isArray(locationData.weatherElement)) {
-                throw new Error('代表地區的資料結構不完整，缺少 weatherElement 陣列');
-            }
-
+            const locationData = data.records.location[0];
             const weatherElements = {};
             locationData.weatherElement.forEach(elem => {
                 weatherElements[elem.elementName] = elem.time;
             });
             
-            const dailyData = {};
-            const ensureDayExists = (date) => {
-                if (!dailyData[date]) {
-                    dailyData[date] = { temps: [], wx: [], wxValue: [], pop: [] };
-                }
-            };
-            
-            if (weatherElements.T) {
-                weatherElements.T.forEach(time => {
-                    if (time.dataTime && time.elementValue && time.elementValue.length > 0) {
-                        const date = time.dataTime.split(' ')[0];
-                        ensureDayExists(date);
-                        dailyData[date].temps.push(parseInt(time.elementValue[0].value, 10));
-                    }
-                });
-            }
-            if (weatherElements.Wx) {
-                weatherElements.Wx.forEach(time => {
-                    if (time.startTime && time.elementValue && time.elementValue.length > 1) {
-                        const date = time.startTime.split(' ')[0];
-                        ensureDayExists(date);
-                        dailyData[date].wx.push(time.elementValue[0].value);
-                        dailyData[date].wxValue.push(time.elementValue[1].value);
-                    }
-                });
-            }
-            if (weatherElements.PoP12h) {
-                weatherElements.PoP12h.forEach(time => {
-                    if (time.startTime && time.elementValue && time.elementValue.length > 0) {
-                        const date = time.startTime.split(' ')[0];
-                        ensureDayExists(date);
-                        dailyData[date].pop.push(parseInt(time.elementValue[0].value, 10) || 0);
-                    }
-                });
-            }
-
-            const dates = Object.keys(dailyData).sort();
-            if (dates.length === 0) {
-                 throw new Error('無法從 API 資料中整理出任何預報');
-            }
-
-            const todayDate = dates[0];
-            const today = dailyData[todayDate];
-            
-            const todayWx = (today.wx.length > 0) ? today.wx[0] : 'N/A';
-            const todayWxValue = (today.wxValue.length > 0) ? today.wxValue[0] : '';
-            const todayPop = (today.pop.length > 0) ? Math.max(...today.pop) : 0;
-            const todayMaxT = (today.temps.length > 0) ? Math.max(...today.temps) : 'N/A';
-            const todayMinT = (today.temps.length > 0) ? Math.min(...today.temps) : 'N/A';
+            const todayWx = weatherElements.Wx[0].parameter.parameterName;
+            const todayPop = weatherElements.PoP[0].parameter.parameterName;
+            const todayMaxT = weatherElements.MaxT[0].parameter.parameterName;
+            const todayMinT = weatherElements.MinT[0].parameter.parameterName;
+            const todayWxValue = weatherElements.Wx[0].parameter.parameterValue;
 
             const todayHtml = `
                 <div class="weather-today">
@@ -427,32 +372,31 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                     <div style="text-align: right;">
                         <div class="weather-today-temp">${todayMinT}° / ${todayMaxT}°</div>
-                        <div class="weather-today-location">${locationData.locationName || city}</div>
+                        <div class="weather-today-location">${city}</div>
                     </div>
                 </div>`;
             
             let forecastHtml = '<div class="weather-forecast">';
-            dates.forEach(dateKey => {
-                const forecast = dailyData[dateKey];
-                if (!forecast || forecast.temps.length === 0) return;
+            // This API provides data in 12-hour intervals for 3 periods (36 hours)
+            for (let i = 0; i < weatherElements.Wx.length; i++) {
+                const forecastDate = new Date(weatherElements.Wx[i].startTime);
+                // Display a simpler forecast for subsequent periods
+                 if (i > 0) { // Start from the second time period for the forecast display
+                    const day = `${forecastDate.getMonth() + 1}/${forecastDate.getDate()}`;
+                    const icon = getCwaWeatherIcon(weatherElements.Wx[i].parameter.parameterValue);
+                    const minT = weatherElements.MinT[i].parameter.parameterName;
+                    const maxT = weatherElements.MaxT[i].parameter.parameterName;
+                    const pop = weatherElements.PoP[i].parameter.parameterName;
 
-                const date = new Date(dateKey);
-                const day = `${date.getMonth() + 1}/${date.getDate()}`;
-                
-                const iconValue = (forecast.wxValue.length > 0) ? forecast.wxValue[0] : '';
-                const icon = getCwaWeatherIcon(iconValue);
-                const maxT = Math.max(...forecast.temps);
-                const minT = Math.min(...forecast.temps);
-                const pop = (forecast.pop.length > 0) ? Math.max(...forecast.pop) : 0;
-
-                forecastHtml += `
-                    <div class="forecast-day">
-                        <div class="date">${day}</div>
-                        <div class="icon">${icon}</div>
-                        <div class="temp">${minT}°/${maxT}°</div>
-                        <div class="pop">💧 ${pop}%</div>
-                    </div>`;
-            });
+                    forecastHtml += `
+                        <div class="forecast-day">
+                            <div class="date">${day}</div>
+                            <div class="icon">${icon}</div>
+                            <div class="temp">${minT}°/${maxT}°</div>
+                            <div class="pop">💧 ${pop}%</div>
+                        </div>`;
+                 }
+            }
             forecastHtml += '</div>';
 
             weatherContainer.innerHTML = `<div class="weather-widget">${todayHtml}${forecastHtml}</div>`;
