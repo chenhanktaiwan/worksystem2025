@@ -305,64 +305,97 @@ document.addEventListener('DOMContentLoaded', () => {
         return mapping[iconCode] || '❓';
     };
 
-    // --- 【已修改】天氣預報功能，改為呼叫 OpenWeatherMap ---
+    // --- 【已修改】天氣預報功能，改為呼叫 5-Day Forecast API ---
     const fetchWeatherForecast = async () => {
-        const city = '臺北市';
         const apiUrl = `/.netlify/functions/weather-proxy`; // Proxy 會處理所有細節
 
         try {
             const response = await fetch(apiUrl);
             if (!response.ok) {
                 const errorData = await response.json().catch(() => ({ message: '無法解析錯誤回應' }));
-                throw new Error(`天氣伺服器錯誤! 狀態: ${response.status}. 訊息: ${errorData.message}`);
+                throw new Error(`天氣伺服器錯誤! 狀態: ${response.status}. 訊息: ${errorData.message || response.statusText}`);
             }
 
             const data = await response.json();
             
-            if (!data.daily || data.daily.length === 0) {
+            if (!data.list || data.list.length === 0) {
                  throw new Error('API 回應成功但資料結構不正確或無資料');
             }
 
-            const today = data.daily[0];
+            // --- 新的資料處理邏輯 ---
+            const today = data.list[0];
             const todayWx = today.weather[0].description;
             const todayPop = Math.round(today.pop * 100);
-            const todayMaxT = Math.round(today.temp.max);
-            const todayMinT = Math.round(today.temp.min);
+            const todayTemp = Math.round(today.main.temp);
             const todayIcon = getOwmWeatherIcon(today.weather[0].icon);
+
+            // 為了取得今日最高溫與最低溫，需要遍歷今天所有的預報
+            const todayDateStr = new Date(today.dt * 1000).toLocaleDateString();
+            let todayMinTemp = today.main.temp_min;
+            let todayMaxTemp = today.main.temp_max;
+            
+            data.list.forEach(item => {
+                if (new Date(item.dt * 1000).toLocaleDateString() === todayDateStr) {
+                    if (item.main.temp_min < todayMinTemp) todayMinTemp = item.main.temp_min;
+                    if (item.main.temp_max > todayMaxTemp) todayMaxTemp = item.main.temp_max;
+                }
+            });
 
             const todayHtml = `
                 <div class="weather-today">
                     <div class="weather-today-main">
                         <div class="weather-today-icon">${todayIcon}</div>
                         <div class="weather-today-details">
-                            <div class="condition">${todayWx}</div>
+                            <div class="condition">${todayWx} (現在 ${todayTemp}°)</div>
                             <div class="pop">降雨機率：${todayPop}%</div>
                         </div>
                     </div>
                     <div style="text-align: right;">
-                        <div class="weather-today-temp">${todayMinT}° / ${todayMaxT}°</div>
-                        <div class="weather-today-location">${city}</div>
+                        <div class="weather-today-temp">${Math.round(todayMinTemp)}° / ${Math.round(todayMaxTemp)}°</div>
+                        <div class="weather-today-location">${data.city.name}</div>
                     </div>
                 </div>`;
-            
+
+            // --- 處理未來幾天的預報 ---
+            const dailyData = {};
+            data.list.forEach(item => {
+                const date = new Date(item.dt * 1000).toLocaleDateString('zh-TW', {month: 'numeric', day: 'numeric'});
+                if (!dailyData[date]) {
+                    dailyData[date] = {
+                        temps: [],
+                        pops: [],
+                        icons: {},
+                    };
+                }
+                dailyData[date].temps.push(item.main.temp);
+                dailyData[date].pops.push(item.pop);
+                
+                const icon = item.weather[0].icon;
+                dailyData[date].icons[icon] = (dailyData[date].icons[icon] || 0) + 1;
+            });
+
+            // 移除今日資料，只看未來
+            const todayKey = new Date().toLocaleDateString('zh-TW', {month: 'numeric', day: 'numeric'});
+            delete dailyData[todayKey];
+
             let forecastHtml = '<div class="weather-forecast">';
-            // 從明天開始，顯示接下來的 7 天
-            for (let i = 1; i < data.daily.length && i < 8; i++) {
-                const dayData = data.daily[i];
-                const forecastDate = new Date(dayData.dt * 1000); // dt 是 Unix 時間戳
-                const day = `${forecastDate.getMonth() + 1}/${forecastDate.getDate()}`;
-                const icon = getOwmWeatherIcon(dayData.weather[0].icon);
-                const minT = Math.round(dayData.temp.min);
-                const maxT = Math.round(dayData.temp.max);
-                const pop = Math.round(dayData.pop * 100);
+            Object.keys(dailyData).slice(0, 5).forEach(date => {
+                const day = dailyData[date];
+                const minT = Math.round(Math.min(...day.temps));
+                const maxT = Math.round(Math.max(...day.temps));
+                const pop = Math.round(Math.max(...day.pops) * 100);
+                
+                // 找出當天出現最多次的圖示作為代表
+                const representativeIcon = Object.keys(day.icons).reduce((a, b) => day.icons[a] > day.icons[b] ? a : b);
+
                 forecastHtml += `
                     <div class="forecast-day">
-                        <div class="date">${day}</div>
-                        <div class="icon">${icon}</div>
+                        <div class="date">${date}</div>
+                        <div class="icon">${getOwmWeatherIcon(representativeIcon)}</div>
                         <div class="temp">${minT}°/${maxT}°</div>
                         <div class="pop">💧 ${pop}%</div>
                     </div>`;
-            }
+            });
             forecastHtml += '</div>';
 
             weatherContainer.innerHTML = `<div class="weather-widget">${todayHtml}${forecastHtml}</div>`;
