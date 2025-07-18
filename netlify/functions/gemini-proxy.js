@@ -52,7 +52,7 @@ exports.handler = async function (event, context) {
     return {
       statusCode: 200,
       headers: {
-        'Access-Control-Allow-Origin': 'https://your-app-name.netlify.app', // 【重要】請換成您的 Netlify 網站網址
+        'Access-Control-Allow-Origin': 'https://ephemeral-paletas-17b00b.netlify.app/', // 【重要】請換成您的 Netlify 網站網址
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ text }),
