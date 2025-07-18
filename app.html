@@ -250,7 +250,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (error && error.code !== 'PGRST116') { console.error('讀取 profile 失敗:', error); return; }
         currentUserProfile = profile;
         const nickname = user.user_metadata.nickname || user.email.split('@')[0];
-        const avatarUrl = user.user_metadata.avatar_url ? `${user.user_metadata.avatar_url}?t=${new Date().getTime()}` : 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMjAiIGhlaWdodD0iMTIwIiB2aWV3Qm94PSIwIDAgMTIwIDEyMCI+CiAgPHJlY3Qgd2lkdGg9IjEyMCIgaGVpZ2h0PSIxMjAiIHN0eWxlPSJmaWxsOiNjZWMwY2U7IiAvPgogIDxwYXRoIGQ9Ik02MCA2MEM3Ni41NjkgNjAgOTAgNDYuNTY5IDkwIDMwQzkwIDEzLjQzMSA3Ni41NjkgMCA2MCAwQzQzLjQzMSAwIDMwIDEzLjQzMSA5MCAzMEMzMCA0Ni41NjkgNDMuNDMxIDYwIDYwIDYwWk02MCA3MEMzNy45MDkgNzEgMjAgODguOTA5IDIwIDExMVYxMjBIMTAwVjExMUMxMDAgODguOTA5IDgyLjA5MSA3MSA2MCA3MVoiIGZpbGw9IiNhYWFiYjAiLz4KPC9zdmc+';
+        const avatarUrl = user.user_metadata.avatar_url ? user.user_metadata.avatar_url : 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMjAiIGhlaWdodD0iMTIwIiB2aWV3Qm94PSIwIDAgMTIwIDEyMCI+CiAgPHJlY3Qgd2lkdGg9IjEyMCIgaGVpZ2h0PSIxMjAiIHN0eWxlPSJmaWxsOiNjZWMwY2U7IiAvPgogIDxwYXRoIGQ9Ik02MCA2MEM3Ni41NjkgNjAgOTAgNDYuNTY5IDkwIDMwQzkwIDEzLjQzMSA3Ni41NjkgMCA2MCAwQzQzLjQzMSAwIDMwIDEzLjQzMSA5MCAzMEMzMCA0Ni41NjkgNDMuNDMxIDYwIDYwIDYwWk02MCA3MEMzNy45MDkgNzEgMjAgODguOTA5IDIwIDExMVYxMjBIMTAwVjExMUMxMDAgODguOTA5IDgyLjA5MSA3MSA2MCA3MVoiIGZpbGw9IiNhYWFiYjAiLz4KPC9zdmc+';
         sidebarAvatar.src = avatarUrl;
         sidebarUsername.innerText = nickname;
         profileAvatar.src = avatarUrl;
@@ -276,31 +276,31 @@ document.addEventListener('DOMContentLoaded', () => {
     const fetchUsers = async () => { const { data: users, error } = await _supabase.from('profiles').select('email, role'); if (error) { console.error('取得使用者列表失敗:', error); userListUl.innerHTML = '<li>無法載入列表</li>'; return; } userListUl.innerHTML = ''; users.forEach(user => { const li = document.createElement('li'); li.innerHTML = `<span class="user-email">${user.email}</span> <span class="user-role">${user.role}</span>`; userListUl.appendChild(li); }); };
     const addUser = async (event) => { event.preventDefault(); const email = newUserEmailInput.value.trim(); if (!email) return; adminMessageDiv.innerText = '處理中...'; const { error } = await _supabase.from('profiles').insert({ email: email, role: 'member' }); if (error) { adminMessageDiv.innerText = `新增失敗: ${error.message}`; } else { adminMessageDiv.innerText = `已成功授權 ${email}！請該使用者用此 Email 註冊/登入。`; newUserEmailInput.value = ''; fetchUsers(); } };
     
-    // --- 【已修改】大頭貼上傳功能 ---
+    // --- 【已修改】大頭貼上傳功能 (增加詳細步驟與錯誤處理) ---
     const uploadAvatar = async (event) => {
         const file = event.target.files[0];
         if (!file || !currentUser) return;
 
         const fileExt = file.name.split('.').pop();
-        // 建立一個更獨特的路徑，避免因為檔名相同而被快取影響
         const filePath = `${currentUser.id}/avatar.${fileExt}`;
-        messageDiv.innerText = "大頭貼上傳中...";
-
+        
         try {
-            // 【已修改】確保 upsert:true，這樣才能覆蓋舊的大頭貼
+            messageDiv.innerText = "大頭貼上傳中...";
+
+            // 步驟 1: 上傳檔案
             const { error: uploadError } = await _supabase.storage
                 .from('avatars')
                 .upload(filePath, file, {
-                    cacheControl: '3600', // 快取一小時
+                    cacheControl: '3600',
                     upsert: true
                 });
 
             if (uploadError) {
-                // 如果上傳失敗，直接拋出錯誤
-                throw uploadError;
+                throw new Error(`上傳失敗: ${uploadError.message}`);
             }
+            messageDiv.innerText = "正在取得 URL...";
 
-            // 【已修改】在上傳成功後，才來取得公開 URL
+            // 步驟 2: 取得公開 URL
             const { data: urlData } = _supabase.storage
                 .from('avatars')
                 .getPublicUrl(filePath);
@@ -311,27 +311,28 @@ document.addEventListener('DOMContentLoaded', () => {
             
             // 加上一個時間戳記，強制瀏覽器更新快取
             const publicUrlWithTimestamp = `${urlData.publicUrl}?t=${new Date().getTime()}`;
+            messageDiv.innerText = "正在更新個人資料...";
 
-            // 更新使用者中繼資料中的 avatar_url
-            const { data, error: updateError } = await _supabase.auth.updateUser({
+            // 步驟 3: 更新使用者 metadata
+            const { data: userUpdateData, error: updateError } = await _supabase.auth.updateUser({
                 data: { avatar_url: publicUrlWithTimestamp }
             });
 
             if (updateError) {
-                throw updateError;
+                throw new Error(`更新使用者資料失敗: ${updateError.message}`);
             }
 
-            // 【已修改】所有步驟都成功後，才顯示成功訊息並重新載入使用者資料
+            // 步驟 4: 成功
             messageDiv.innerText = "大頭貼已更新！";
-            await loadUserProfile(data.user);
+            await loadUserProfile(userUpdateData.user);
 
         } catch (error) {
-            messageDiv.innerText = "更新失敗：" + error.message;
+            messageDiv.innerText = `錯誤: ${error.message}`;
             console.error("大頭貼更新錯誤:", error);
         }
     };
 
-    // --- 【已修改】天氣圖示轉換函式 ---
+    // --- 天氣圖示轉換函式 ---
     const getOwmWeatherIcon = (iconCode) => {
         const mapping = {
             '01d': '☀️', '01n': '🌙',
@@ -347,9 +348,9 @@ document.addEventListener('DOMContentLoaded', () => {
         return mapping[iconCode] || '❓';
     };
 
-    // --- 【已修改】天氣預報功能，改為呼叫 5-Day Forecast API ---
+    // --- 天氣預報功能 (使用 5-Day Forecast API) ---
     const fetchWeatherForecast = async () => {
-        const apiUrl = `/.netlify/functions/weather-proxy`; // Proxy 會處理所有細節
+        const apiUrl = `/.netlify/functions/weather-proxy`;
 
         try {
             const response = await fetch(apiUrl);
@@ -364,14 +365,12 @@ document.addEventListener('DOMContentLoaded', () => {
                  throw new Error('API 回應成功但資料結構不正確或無資料');
             }
 
-            // --- 新的資料處理邏輯 ---
             const today = data.list[0];
             const todayWx = today.weather[0].description;
             const todayPop = Math.round(today.pop * 100);
             const todayTemp = Math.round(today.main.temp);
             const todayIcon = getOwmWeatherIcon(today.weather[0].icon);
 
-            // 為了取得今日最高溫與最低溫，需要遍歷今天所有的預報
             const todayDateStr = new Date(today.dt * 1000).toLocaleDateString();
             let todayMinTemp = today.main.temp_min;
             let todayMaxTemp = today.main.temp_max;
@@ -398,7 +397,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                 </div>`;
 
-            // --- 處理未來幾天的預報 ---
             const dailyData = {};
             data.list.forEach(item => {
                 const date = new Date(item.dt * 1000).toLocaleDateString('zh-TW', {month: 'numeric', day: 'numeric'});
@@ -416,7 +414,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 dailyData[date].icons[icon] = (dailyData[date].icons[icon] || 0) + 1;
             });
 
-            // 移除今日資料，只看未來
             const todayKey = new Date().toLocaleDateString('zh-TW', {month: 'numeric', day: 'numeric'});
             delete dailyData[todayKey];
 
@@ -427,7 +424,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 const maxT = Math.round(Math.max(...day.temps));
                 const pop = Math.round(Math.max(...day.pops) * 100);
                 
-                // 找出當天出現最多次的圖示作為代表
                 const representativeIcon = Object.keys(day.icons).reduce((a, b) => day.icons[a] > day.icons[b] ? a : b);
 
                 forecastHtml += `
