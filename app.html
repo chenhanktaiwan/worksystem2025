@@ -243,8 +243,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const { createClient } = supabase;
     const _supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     
-    // 請在此處填入您的氣象署 API 金鑰
-    const CWA_API_KEY = 'CWA-09CB4F50-2A02-4667-902A-3D2AFDFBB662'; 
+    // CWA_API_KEY 已移至後端代理，此處不再需要
 
     const loadingOverlay = document.getElementById('loading-overlay');
     const appContainer = document.querySelector('.app-container');
@@ -287,7 +286,6 @@ document.addEventListener('DOMContentLoaded', () => {
         currentUserProfile = profile;
 
         const nickname = user.user_metadata.nickname || user.email.split('@')[0];
-        // 【已修改】確保頭像 URL 更新後能正確顯示
         const avatarUrl = user.user_metadata.avatar_url ? `${user.user_metadata.avatar_url}?t=${new Date().getTime()}` : 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMjAiIGhlaWdodD0iMTIwIiB2aWV3Qm94PSIwIDAgMTIwIDEyMCI+CiAgPHJlY3Qgd2lkdGg9IjEyMCIgaGVpZ2h0PSIxMjAiIHN0eWxlPSJmaWxsOiNjZWMwY2U7IiAvPgogIDxwYXRoIGQ9Ik02MCA2MEM3Ni41NjkgNjAgOTAgNDYuNTY5IDkwIDMwQzkwIDEzLjQzMSA3Ni41NjkgMCA2MCAwQzQzLjQzMSAwIDMwIDEzLjQzMSA5MCAzMEMzMCA0Ni41NjkgNDMuNDMxIDYwIDYwIDYwWk02MCA3MEMzNy45MDkgNzEgMjAgODguOTA5IDIwIDExMVYxMjBIMTAwVjExMUMxMDAgODguOTA5IDgyLjA5MSA3MSA2MCA3MVoiIGZpbGw9IiNhYWFiYjAiLz4KPC9zdmc+';
         
         sidebarAvatar.src = avatarUrl;
@@ -317,17 +315,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const addUser = async (event) => { event.preventDefault(); const email = newUserEmailInput.value.trim(); if (!email) return; adminMessageDiv.innerText = '處理中...'; const { error } = await _supabase.from('profiles').insert({ email: email, role: 'member' }); if (error) { adminMessageDiv.innerText = `新增失敗: ${error.message}`; } else { adminMessageDiv.innerText = `已成功授權 ${email}！請該使用者用此 Email 註冊/登入。`; newUserEmailInput.value = ''; fetchUsers(); } };
     const getCwaWeatherIcon = (wxValue) => { const value = parseInt(wxValue, 10); if (value === 1) return '☀️'; if (value >= 2 && value <= 3) return '🌤️'; if (value >= 4 && value <= 7) return '☁️'; if (value >= 8 && value <= 22) return '🌧️'; if (value >= 23 && value <= 28) return '🌫️'; if (value >= 29 && value <= 39) return '⛈️'; if (value >= 41 && value <= 42) return '❄️'; return '❓'; };
     
-    // --- 【已修改】大頭貼上傳功能 ---
+    // --- 大頭貼上傳功能 (程式碼不變，問題在後台權限) ---
     const uploadAvatar = async (event) => {
         const file = event.target.files[0];
         if (!file || !currentUser) return;
 
-        // 檔案路徑使用 userID 建立獨立資料夾，避免衝突
         const fileExt = file.name.split('.').pop();
         const filePath = `${currentUser.id}/${Date.now()}.${fileExt}`;
         messageDiv.innerText = "大頭貼上傳中...";
 
-        // 加上 upsert:true 可覆蓋舊檔案
         const { error: uploadError } = await _supabase.storage
             .from('avatars')
             .upload(filePath, file, {
@@ -340,7 +336,6 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // 從 Storage 取得檔案的公開 URL
         const { data: urlData } = _supabase.storage
             .from('avatars')
             .getPublicUrl(filePath);
@@ -350,7 +345,6 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // 使用取得的公開 URL 來更新使用者資料
         const { data, error: updateError } = await _supabase.auth.updateUser({
             data: { avatar_url: urlData.publicUrl }
         });
@@ -363,17 +357,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    // --- 【已修改】天氣預報功能 ---
+    // --- 【已修改】天氣預報功能，改為呼叫後端代理 ---
     const fetchWeatherForecast = async () => {
-        if (!CWA_API_KEY) {
-            weatherContainer.innerHTML = `<p style="color: red;">請在程式碼中填入您的氣象署 API 授權碼。</p>`;
-            return;
-        }
-
         const city = '臺北市';
-        // 使用正確的一週天氣預報資料 ID
-        const dataId = 'F-C0032-005'; 
-        const apiUrl = `https://opendata.cwa.gov.tw/api/v1/rest/datastore/${dataId}?Authorization=${CWA_API_KEY}&locationName=${encodeURIComponent(city)}&elementName=Wx,PoP,MinT,MaxT`;
+        // 指向我們自己的後端代理 Netlify Function
+        const apiUrl = `/.netlify/functions/weather-proxy?locationName=${encodeURIComponent(city)}`;
 
         try {
             const response = await fetch(apiUrl);
