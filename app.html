@@ -273,6 +273,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const loadUserProfile = async (user) => {
         currentUser = user;
         try {
+            // 由於 RLS 已設定，這裡的查詢會成功
             const { data: profile, error } = await _supabase.from('profiles').select('*').eq('id', user.id).single();
             if (error && error.code !== 'PGRST116') throw error;
             
@@ -443,48 +444,57 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // --- 5. 核心認證邏輯 ---
+    // --- 5. 核心認證邏輯 (已修正) ---
     _supabase.auth.onAuthStateChange(async (event, session) => {
-        if (!session || !session.user) {
+        // 如果使用者登出或沒有 session，導向登入頁面
+        if (event === 'SIGNED_OUT' || !session) {
             window.location.href = `${window.location.origin}/index.html`;
             return;
         }
 
-        try {
-            let { data: profile, error: profileError } = await _supabase.from('profiles').select('id, role, status').eq('id', session.user.id).single();
-            
-            if (profileError && profileError.code === 'PGRST116') { // Not found
-                console.log('新使用者，正在自動建立 profile...');
-                const { data: newProfile, error: insertError } = await _supabase.from('profiles').insert({ id: session.user.id, email: session.user.email, role: 'member', status: 'pending' }).select().single();
-                if (insertError) throw insertError;
-                profile = newProfile;
-            } else if (profileError) {
-                throw profileError;
-            }
-            
-            if (profile.status === 'approved') {
-                loadingOverlay.style.display = 'none';
-                appContainer.style.display = 'flex';
-                switchView('home');
-                fetchWeatherForecast();
-                await loadUserProfile(session.user);
-            } else {
-                document.body.innerHTML = `<div style="text-align: center; padding: 50px; font-family: sans-serif; color: #333;"><h2>感謝您的註冊！</h2><p>您的帳號 (<strong>${session.user.email}</strong>) 正在等待管理員審核啟用。</p><button onclick="supabase.createClient('${SUPABASE_URL}', '${SUPABASE_ANON_KEY}').auth.signOut().then(() => window.location.href='/index.html')" style="padding: 10px 20px; background-color: #e74c3c; color: white; border: none; border-radius: 4px; cursor: pointer; margin-top: 20px;">登出</button></div>`;
-            }
-        } catch (error) {
-            console.error('驗證使用者 Profile 時發生嚴重錯誤:', error);
-            document.body.innerHTML = `<div style="text-align: center; padding: 50px; font-family: sans-serif; color: #dc3545;"><h2>應用程式載入失敗</h2><p>錯誤詳情: ${error.message}</p><p style="color: #666; max-width: 600px; margin: auto;"><b>請確認 Supabase 的 'profiles' 資料表已啟用 RLS 並設定正確的權限。</b></p><button onclick="supabase.createClient('${SUPABASE_URL}', '${SUPABASE_ANON_KEY}').auth.signOut().then(() => window.location.href='/index.html')" style="padding: 10px 20px; background-color: #e74c3c; color: white; border: none; border-radius: 4px; cursor: pointer; margin-top: 20px;">登出</button></div>`;
+        // 如果使用者資料更新 (例如：暱稱)，重新載入使用者資訊
+        if (event === 'USER_UPDATED') {
+            await loadUserProfile(session.user);
+            return;
         }
 
-        const userListener = _supabase.auth.onAuthStateChange((event, session) => {
-            if (event === 'SIGNED_OUT') {
-                userListener.data.subscription.unsubscribe();
-                window.location.href = `${window.location.origin}/index.html`;
+        // 這個區塊處理初次載入和登入事件
+        if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN') {
+            try {
+                // 檢查使用者的 profile 和核准狀態
+                const { data: profile, error: profileError } = await _supabase.from('profiles').select('id, role, status').eq('id', session.user.id).single();
+
+                if (profileError && profileError.code !== 'PGRST116') {
+                    // 如果發生了 'PGRST116' (找不到) 以外的錯誤，就拋出
+                    throw profileError;
+                }
+
+                if (profile && profile.status === 'approved') {
+                    // 使用者已被核准，顯示應用程式主體
+                    loadingOverlay.style.display = 'none';
+                    appContainer.style.display = 'flex';
+                    // 載入初始資料
+                    switchView('home');
+                    fetchWeatherForecast();
+                    await loadUserProfile(session.user);
+
+                } else if (profile && profile.status === 'pending') {
+                    // 使用者存在但等待核准中
+                    document.body.innerHTML = `<div style="text-align: center; padding: 50px; font-family: sans-serif; color: #333;"><h2>感謝您的註冊！</h2><p>您的帳號 (<strong>${session.user.email}</strong>) 正在等待管理員審核啟用。</p><button onclick="supabase.createClient('${SUPABASE_URL}', '${SUPABASE_ANON_KEY}').auth.signOut().then(() => window.location.href='/index.html')" style="padding: 10px 20px; background-color: #e74c3c; color: white; border: none; border-radius: 4px; cursor: pointer; margin-top: 20px;">登出</button></div>`;
+                
+                } else {
+                    // Profile 不存在，代表是全新使用者，為其建立 profile
+                    console.log('新使用者，正在自動建立 profile...');
+                    const { error: insertError } = await _supabase.from('profiles').insert({ id: session.user.id, email: session.user.email, role: 'member', status: 'pending' });
+                    if (insertError) throw insertError;
+                    // 建立後，顯示等待核准的訊息
+                    document.body.innerHTML = `<div style="text-align: center; padding: 50px; font-family: sans-serif; color: #333;"><h2>感謝您的註冊！</h2><p>您的帳號 (<strong>${session.user.email}</strong>) 正在等待管理員審核啟用。</p><button onclick="supabase.createClient('${SUPABASE_URL}', '${SUPABASE_ANON_KEY}').auth.signOut().then(() => window.location.href='/index.html')" style="padding: 10px 20px; background-color: #e74c3c; color: white; border: none; border-radius: 4px; cursor: pointer; margin-top: 20px;">登出</button></div>`;
+                }
+            } catch (error) {
+                console.error('驗證使用者 Profile 時發生嚴重錯誤:', error);
+                document.body.innerHTML = `<div style="text-align: center; padding: 50px; font-family: sans-serif; color: #dc3545;"><h2>應用程式載入失敗</h2><p>錯誤詳情: ${error.message}</p><p style="color: #666; max-width: 600px; margin: auto;"><b>請確認 Supabase 的 'profiles' 資料表已啟用 RLS 並設定了正確的權限。若已設定，請檢查瀏覽器開發者工具的 Console 和 Network 分頁以獲取更多資訊。</b></p><button onclick="supabase.createClient('${SUPABASE_URL}', '${SUPABASE_ANON_KEY}').auth.signOut().then(() => window.location.href='/index.html')" style="padding: 10px 20px; background-color: #e74c3c; color: white; border: none; border-radius: 4px; cursor: pointer; margin-top: 20px;">登出</button></div>`;
             }
-            if (event === 'USER_UPDATED' && session?.user) {
-                loadUserProfile(session.user);
-            }
-        });
+        }
     });
 });
 </script>
