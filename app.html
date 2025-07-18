@@ -603,89 +603,103 @@ document.addEventListener('DOMContentLoaded', () => {
 
     userGeminiKeyInput.addEventListener('input', () => { localStorage.setItem('geminiApiKey', userGeminiKeyInput.value); });
 
-    // --- 核心邏輯 (新版 - 包含超級管理員和狀態審核) ---
+    // --- 【修正後的核心邏輯】 ---
     _supabase.auth.onAuthStateChange(async (event, session) => {
-        if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN') {
-            if (!session || !session.user) {
-                loadingOverlay.style.display = 'none';
-                window.location.href = `${window.location.origin}/index.html`;
-                return;
-            }
-
-            // 1. 檢查使用者 Profile 是否存在
-            let { data: profile, error: profileError } = await _supabase
-                .from('profiles')
-                .select('id, role, status')
-                .eq('id', session.user.id)
-                .single();
-
-            // 2. 如果 Profile 不存在，為新使用者自動建立一個
-            if (profileError && profileError.code === 'PGRST116') {
-                console.log('新使用者，正在自動建立 profile...');
-                
-                // 判斷是否為超級管理員
-                const isSuperAdmin = session.user.email === SUPER_ADMIN_EMAIL;
-                const newUserRole = isSuperAdmin ? 'admin' : 'member';
-                const newUserStatus = isSuperAdmin ? 'approved' : 'pending';
-
-                console.log(`新使用者 Email: ${session.user.email}, 角色: ${newUserRole}, 狀態: ${newUserStatus}`);
-
-                const { data: newProfile, error: insertError } = await _supabase
-                    .from('profiles')
-                    .insert({
-                        id: session.user.id,
-                        email: session.user.email,
-                        role: newUserRole,
-                        status: newUserStatus
-                    })
-                    .select('id, role, status')
-                    .single();
-
-                if (insertError) {
-                    console.error('自動建立 profile 失敗:', insertError);
-                    document.body.innerHTML = `<div style="text-align: center; padding: 50px; font-family: sans-serif;"><h2>註冊失敗</h2><p>無法為您建立帳號，請聯繫管理員。</p><p>錯誤訊息: ${insertError.message}</p></div>`;
-                    await _supabase.auth.signOut();
+        try {
+            if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN') {
+                if (!session || !session.user) {
+                    loadingOverlay.style.display = 'none';
+                    window.location.href = `${window.location.origin}/index.html`;
                     return;
                 }
-                profile = newProfile;
-            }
 
-            // 3. 根據 Profile 的 status 決定顯示內容
-            loadingOverlay.style.display = 'none';
+                // 1. 檢查使用者 Profile 是否存在
+                let { data: profile, error: profileError } = await _supabase
+                    .from('profiles')
+                    .select('id, role, status')
+                    .eq('id', session.user.id)
+                    .single();
 
-            if (profile && profile.status === 'approved') {
-                appContainer.style.display = 'flex';
-                await loadUserProfile(session.user);
-                if (profile.role === 'admin') {
-                    fetchUsers();
+                // 2. 如果 Profile 不存在，為新使用者自動建立一個
+                if (profileError && profileError.code === 'PGRST116') {
+                    console.log('新使用者，正在自動建立 profile...');
+                    
+                    const isSuperAdmin = session.user.email === SUPER_ADMIN_EMAIL;
+                    const newUserRole = isSuperAdmin ? 'admin' : 'member';
+                    const newUserStatus = isSuperAdmin ? 'approved' : 'pending';
+
+                    console.log(`新使用者 Email: ${session.user.email}, 角色: ${newUserRole}, 狀態: ${newUserStatus}`);
+
+                    const { data: newProfile, error: insertError } = await _supabase
+                        .from('profiles')
+                        .insert({
+                            id: session.user.id,
+                            email: session.user.email,
+                            role: newUserRole,
+                            status: newUserStatus
+                        })
+                        .select('id, role, status')
+                        .single();
+
+                    if (insertError) {
+                        console.error('自動建立 profile 失敗:', insertError);
+                        document.body.innerHTML = `<div style="text-align: center; padding: 50px; font-family: sans-serif;"><h2>註冊失敗</h2><p>無法為您建立帳號，請聯繫管理員。</p><p>錯誤訊息: ${insertError.message}</p></div>`;
+                        await _supabase.auth.signOut();
+                        return;
+                    }
+                    profile = newProfile;
+                } else if (profileError) {
+                    // 如果是 'PGRST116' 以外的資料庫錯誤，直接拋出
+                    throw profileError;
                 }
-                switchView('home');
-                fetchWeatherForecast();
-                const savedGeminiKey = localStorage.getItem('geminiApiKey');
-                if (savedGeminiKey) { userGeminiKeyInput.value = savedGeminiKey; }
-            } else if (profile && profile.status === 'pending') {
-                document.body.innerHTML = `
-                    <div style="text-align: center; padding: 50px; font-family: sans-serif; color: #333;">
-                        <h2>感謝您的註冊！</h2>
-                        <p>您的帳號 (<strong>${session.user.email}</strong>) 已成功建立，正在等待管理員審核啟用。</p>
-                        <p>審核完成後，您就可以正常登入。請您稍後再試。</p>
-                        <button onclick="supabase.createClient('${SUPABASE_URL}', '${SUPABASE_ANON_KEY}').auth.signOut()" style="padding: 10px 20px; background-color: #e74c3c; color: white; border: none; border-radius: 4px; cursor: pointer; margin-top: 20px;">登出</button>
-                    </div>
-                `;
-            } else {
-                 document.body.innerHTML = `
-                    <div style="text-align: center; padding: 50px; font-family: sans-serif; color: #333;">
-                        <h2>存取被拒</h2>
-                        <p>您的帳號目前無法存取此平台，請聯繫管理員。</p>
-                        <button onclick="supabase.createClient('${SUPABASE_URL}', '${SUPABASE_ANON_KEY}').auth.signOut()" style="padding: 10px 20px; background-color: #e74c3c; color: white; border: none; border-radius: 4px; cursor: pointer; margin-top: 20px;">登出</button>
-                    </div>
-                `;
-            }
 
-        } else if (event === 'SIGNED_OUT') {
-            window.location.href = `${window.location.origin}/index.html`;
-        } else if (event === 'USER_UPDATED' && session && session.user) {
-            await loadUserProfile(session.user);
+                // 3. 根據 Profile 的 status 決定顯示內容
+                loadingOverlay.style.display = 'none'; // <-- 確保錯誤發生前能隱藏
+
+                if (profile && profile.status === 'approved') {
+                    appContainer.style.display = 'flex';
+                    await loadUserProfile(session.user);
+                    if (profile.role === 'admin') {
+                        fetchUsers();
+                    }
+                    switchView('home');
+                    fetchWeatherForecast();
+                    const savedGeminiKey = localStorage.getItem('geminiApiKey');
+                    if (savedGeminiKey) { userGeminiKeyInput.value = savedGeminiKey; }
+                } else if (profile && profile.status === 'pending') {
+                    document.body.innerHTML = `
+                        <div style="text-align: center; padding: 50px; font-family: sans-serif; color: #333;">
+                            <h2>感謝您的註冊！</h2>
+                            <p>您的帳號 (<strong>${session.user.email}</strong>) 已成功建立，正在等待管理員審核啟用。</p>
+                            <p>審核完成後，您就可以正常登入。請您稍後再試。</p>
+                            <button onclick="supabase.createClient('${SUPABASE_URL}', '${SUPABASE_ANON_KEY}').auth.signOut()" style="padding: 10px 20px; background-color: #e74c3c; color: white; border: none; border-radius: 4px; cursor: pointer; margin-top: 20px;">登出</button>
+                        </div>
+                    `;
+                } else {
+                     document.body.innerHTML = `
+                        <div style="text-align: center; padding: 50px; font-family: sans-serif; color: #333;">
+                            <h2>存取被拒</h2>
+                            <p>您的帳號目前無法存取此平台，請聯繫管理員。</p>
+                            <button onclick="supabase.createClient('${SUPABASE_URL}', '${SUPABASE_ANON_KEY}').auth.signOut()" style="padding: 10px 20px; background-color: #e74c3c; color: white; border: none; border-radius: 4px; cursor: pointer; margin-top: 20px;">登出</button>
+                        </div>
+                    `;
+                }
+
+            } else if (event === 'SIGNED_OUT') {
+                window.location.href = `${window.location.origin}/index.html`;
+            } else if (event === 'USER_UPDATED' && session && session.user) {
+                await loadUserProfile(session.user);
+            }
+        } catch (error) {
+            console.error('驗證過程中發生嚴重錯誤:', error);
+            loadingOverlay.style.display = 'none'; // 確保隱藏載入畫面
+            document.body.innerHTML = `
+                <div style="text-align: center; padding: 50px; font-family: sans-serif; color: #dc3545;">
+                    <h2>載入失敗</h2>
+                    <p>應用程式載入時發生錯誤，請稍後再試或聯繫管理員。</p>
+                    <p>錯誤詳情: ${error.message}</p>
+                </div>
+            `;
         }
     });
 });
