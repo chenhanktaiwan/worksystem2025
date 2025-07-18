@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>我的應用程式</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script async src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY&callback=initMap&libraries=places,marker&loading=async"></script>
+    <script async src="https://maps.googleapis.com/maps/api/js?key=YOUR_VALID_API_KEY&callback=initMap&libraries=places,marker&loading=async"></script>
     <style>
         /* 全局與佈局 */
         :root { 
@@ -18,11 +18,11 @@
         }
         .app-container { 
             display: flex;
-            flex-direction: column; /* 改為垂直佈局 */
+            flex-direction: column;
             height: 100vh; 
         }
 
-        /* --- 【新】頂部導覽列樣式 --- */
+        /* 頂部導覽列樣式 */
         .top-nav {
             height: var(--header-height);
             background-color: #2c3e50;
@@ -98,12 +98,12 @@
             margin: 0;
         }
 
-        /* --- 內容區域調整 --- */
+        /* 內容區域 */
         .content-area { 
             flex-grow: 1; 
             padding: 2rem; 
             overflow-y: auto; 
-            margin-top: var(--header-height); /* 留出頂部導覽列空間 */
+            margin-top: var(--header-height);
         }
         
         #loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: #f4f7f9; display: flex; justify-content: center; align-items: center; font-size: 1.2rem; color: #2c3e50; z-index: 9999; }
@@ -120,6 +120,8 @@
         hr { border: 0; border-top: 1px solid #dee2e6; margin: 20px 0; }
         .page-title { font-family: "Microsoft JhengHei", "微軟正黑體", sans-serif; font-size: 20pt; font-weight: bold; text-align: center; color: #2c3e50; margin-top: 0; margin-bottom: 1rem; }
         .title-divider { border: 0; border-top: 1px solid #e0e0e0; margin-bottom: 2rem; }
+        
+        /* Dashboard 樣式 */
         .dashboard-grid { display: flex; flex-wrap: wrap; gap: 2rem; align-items: stretch; }
         .dashboard-item { flex: 1; min-width: 300px; display: flex; flex-direction: column; }
         .weather-widget { background: #2D9CDB; color: white; border-radius: 8px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); font-family: "Microsoft JhengHei", "微軟正黑體", sans-serif; flex-grow: 1; }
@@ -151,7 +153,7 @@
         /* 地圖相關樣式 */
         #map-container { 
             margin-top: 2rem; 
-            position: relative; /* 為了讓搜尋框能疊在地圖上 */
+            position: relative;
         }
         #map { 
             height: 400px; 
@@ -164,20 +166,19 @@
             background-color: #fff;
             font-size: 15px;
             font-weight: 300;
-            margin: 10px; /* 讓它和地圖邊緣有間距 */
-            padding: 10px;
+            margin: 10px;
+            padding: 0.5em 1em;
             text-overflow: ellipsis;
-            width: 300px; /* 寬度 */
             border: 1px solid transparent;
-            border-radius: 4px;
+            border-radius: 8px;
             box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
-            /* 以下為讓搜尋框顯示在地圖左上角所需的樣式 */
             position: absolute;
             top: 0;
             left: 0;
-            z-index: 5; /* 確保它在地圖之上 */
+            z-index: 5;
         }
         
+        /* 使用者管理頁面 */
         .user-management-container { display: flex; gap: 2rem; flex-wrap: wrap; }
         .user-list, .add-user-form { flex: 1; min-width: 300px; background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
         .user-list ul { list-style: none; padding: 0; }
@@ -240,9 +241,8 @@
                 </div>
             </div>
             <div id="map-container">
-                <input id="pac-input" type="text" placeholder="搜尋地圖上的地點..." />
                 <div id="map"></div>
-            </div>
+                </div>
         </div>
         <div id="calendar-view" class="view"><h1 class="page-title">行事曆</h1><hr class="title-divider"><p>此處將放置行事曆功能。</p></div>
         <div id="chat-view" class="view"><h1 class="page-title">聊天</h1><hr class="title-divider"><p>此處將放置聊天室功能。</p></div>
@@ -252,56 +252,43 @@
 </div>
 
 <script>
-    // 【全新修正】Google Maps 初始化函式
+    // 【終極修正版】Google Maps 初始化函式
     async function initMap() {
-        // 使用 try...catch 包裹，避免地圖錯誤導致整個頁面崩潰
         try {
             const defaultPosition = { lat: 25.0479, lng: 121.5171 };
 
-            // 異步載入需要的 Google Maps 函式庫
             const { Map } = await google.maps.importLibrary("maps");
             const { AdvancedMarkerElement } = await google.maps.importLibrary("marker");
-            const { Autocomplete } = await google.maps.importLibrary("places");
+            const { PlaceAutocompleteElement } = await google.maps.importLibrary("places"); 
 
-            // 初始化地圖
             const map = new Map(document.getElementById("map"), {
                 zoom: 15,
                 center: defaultPosition,
                 mapId: "YOUR_MAP_ID", // 建議換成您自己的 Map ID
-                // 停用地圖上預設的 UI，讓介面更乾淨
                 disableDefaultUI: true, 
                 zoomControl: true,
             });
             
-            // 將搜尋框元素與 Autocomplete 功能綁定
-            const input = document.getElementById("pac-input");
-            const autocomplete = new Autocomplete(input, {
-                fields: ["geometry", "name", "formatted_address"], // 指定需要回傳的資料欄位
-            });
-            
-            // 將搜尋框放到地圖的左上角
-            map.controls[google.maps.ControlPosition.TOP_LEFT].push(input);
+            const autocompleteElement = new PlaceAutocompleteElement();
+            const mapContainer = document.getElementById("map-container");
+            const pacInputElement = document.createElement('div');
+            pacInputElement.id = 'pac-input'; // 方便用 CSS 控制樣式
+            pacInputElement.appendChild(autocompleteElement);
 
-            // 建立一個可重複使用的標記
-            const marker = new AdvancedMarkerElement({
-                map,
-                title: "搜尋結果",
-            });
-            marker.setMap(null); // 預設隱藏
+            map.controls[google.maps.ControlPosition.TOP_LEFT].push(pacInputElement);
 
-            // 監聽 Autocomplete 的 'place_changed' 事件
-            // 當使用者從下拉選單中選擇一個地點時觸發
-            autocomplete.addListener("place_changed", () => {
-                marker.setMap(null); // 先清除舊的標記
-                const place = autocomplete.getPlace();
+            const marker = new AdvancedMarkerElement({ map, title: "搜尋結果" });
+            marker.setMap(null);
 
-                // 如果選擇的地點沒有經緯度資訊，則不處理
+            autocompleteElement.addEventListener("gmp-placechange", () => {
+                marker.setMap(null);
+                const place = autocompleteElement.place;
+
                 if (!place.geometry || !place.geometry.location) {
                     console.log("使用者選擇的地點沒有經緯度資訊。");
                     return;
                 }
                 
-                // 移動地圖視角到新選擇的地點
                 if (place.geometry.viewport) {
                     map.fitBounds(place.geometry.viewport);
                 } else {
@@ -309,31 +296,27 @@
                     map.setZoom(17);
                 }
                 
-                // 在新地點上顯示標記
                 marker.position = place.geometry.location;
                 marker.title = place.name;
                 marker.setMap(map);
             });
 
-            // 建立一個初始位置的標記
             new AdvancedMarkerElement({ map, title: "目前位置", position: defaultPosition });
 
         } catch (error) {
             console.error("Google Maps 初始化失敗:", error);
-            // 如果地圖初始化失敗，在頁面上顯示錯誤訊息
             const mapContainer = document.getElementById("map-container");
             if(mapContainer) {
                 mapContainer.innerHTML = `<p style="color: red; text-align: center; padding: 20px;">地圖載入失敗。請檢查您的 Google Maps API 金鑰是否有效，並確認已啟用 'Maps JavaScript API' 和 'Places API'。</p>`;
             }
         }
     }
-    // 將 initMap 函式掛載到 window 物件上，以供 Google Maps API 回呼
     window.initMap = initMap;
 </script>
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-    // --- 初始化與取得元素 (內容不變) ---
+    // --- 初始化與取得元素 ---
     const SUPABASE_URL = 'https://wvdfuqvebqolvpwhdelg.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind2ZGZ1cXZlYnFvbHZwd2hkZWxnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTIyMzA0MjksImV4cCI6MjA2NzgwNjQyOX0.0VAgxyaoyeFeNbto9pUchwqQVqvHzCzyC22wXb01OKU';
     const { createClient } = supabase;
@@ -370,7 +353,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let currentUser = null;
 
-    // --- 功能函式 (內容不變) ---
+    // --- 功能函式 ---
     const loadUserProfile = async (user) => {
         currentUser = user;
         try {
@@ -414,11 +397,29 @@ document.addEventListener('DOMContentLoaded', () => {
     const addUser = async (event) => { /* ... */ };
     const uploadAvatar = async (event) => { /* ... */ };
     const getOwmWeatherIcon = (iconCode) => { /* ... */ };
-    const fetchWeatherForecast = async () => { /* ... */ };
+    const fetchWeatherForecast = async () => {
+        const apiUrl = `/.netlify/functions/weather-proxy`;
+        try {
+            const response = await fetch(apiUrl);
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({ message: '無法解析錯誤回應' }));
+                throw new Error(`天氣伺服器錯誤! 狀態: ${response.status}. 訊息: ${errorData.message || response.statusText}`);
+            }
+            const data = await response.json();
+            if (!data.list || data.list.length === 0) {
+                 throw new Error('API 回應成功但資料結構不正確或無資料');
+            }
+            // Weather display logic...
+            weatherContainer.innerHTML = '天氣資訊載入成功'; // 簡化版成功訊息
+        } catch (error) {
+            weatherContainer.innerHTML = `<p style="color: red; text-align: center;">天氣資訊載入失敗: ${error.message}</p>`;
+            console.error("天氣資訊載入失敗:", error);
+        }
+    };
     const fetchUsers = async () => { /* ... */ };
     const approveUser = async (userId) => { /* ... */ };
 
-    // --- 事件綁定 (內容不變) ---
+    // --- 事件綁定 ---
     signOutBtn.addEventListener('click', signOut);
     navLinks.forEach(link => { link.addEventListener('click', (e) => { e.preventDefault(); const viewName = link.getAttribute('data-view'); switchView(viewName); }); });
     profileAvatar.addEventListener('click', () => avatarUploader.click());
@@ -430,70 +431,50 @@ document.addEventListener('DOMContentLoaded', () => {
     userListUl.addEventListener('click', (event) => { if (event.target.classList.contains('approve-btn')) { const userId = event.target.dataset.id; if (confirm(`您確定要核准這位使用者 (${userId}) 嗎？`)) { approveUser(userId); } } });
     userGeminiKeyInput.addEventListener('input', () => { localStorage.setItem('geminiApiKey', userGeminiKeyInput.value); });
 
-    // --- 核心認證邏輯 (使用我上次提供的穩定版本，內容不變) ---
+    // --- 核心認證邏輯 ---
     _supabase.auth.onAuthStateChange(async (event, session) => {
-        if (!session || !session.user) {
+        if (event === 'INITIAL_SESSION' && !session) {
+             loadingOverlay.style.display = 'none';
+             window.location.href = `${window.location.origin}/index.html`;
+             return;
+        }
+
+        if (session && session.user) {
             loadingOverlay.style.display = 'none';
+            appContainer.style.display = 'flex';
+            
+            switchView('home');
+            fetchWeatherForecast();
+            const savedGeminiKey = localStorage.getItem('geminiApiKey');
+            if (savedGeminiKey) { userGeminiKeyInput.value = savedGeminiKey; }
+            
+            try {
+                let { data: profile, error: profileError } = await _supabase.from('profiles').select('id, role, status').eq('id', session.user.id).single();
+                
+                if (profileError && profileError.code !== 'PGRST116') throw profileError;
+
+                if (!profile) {
+                    const { data: newProfile, error: insertError } = await _supabase.from('profiles').insert({ id: session.user.id, email: session.user.email, role: 'member', status: 'pending' }).select().single();
+                    if (insertError) throw insertError;
+                    profile = newProfile;
+                }
+                
+                if (profile.status === 'approved') {
+                    await loadUserProfile(session.user);
+                } else {
+                    document.body.innerHTML = `<div style="text-align: center; padding: 50px;"><h2>感謝註冊</h2><p>您的帳號 (${session.user.email}) 正在等待管理員審核。</p><button onclick="supabase.createClient('${SUPABASE_URL}', '${SUPABASE_ANON_KEY}').auth.signOut().then(()=>window.location.reload())">登出</button></div>`;
+                }
+            } catch (error) {
+                console.error('驗證使用者 Profile 時發生嚴重錯誤:', error);
+                document.body.innerHTML = `<div style="text-align: center; padding: 50px;"><h2>應用程式載入失敗</h2><p>無法讀取您的使用者設定，請檢查資料庫權限(RLS)。</p><p>${error.message}</p><button onclick="supabase.createClient('${SUPABASE_URL}', '${SUPABASE_ANON_KEY}').auth.signOut().then(()=>window.location.reload())">登出</button></div>`;
+            }
+        }
+    });
+
+    _supabase.auth.onAuthStateChange((event, session) => {
+        if (event === 'SIGNED_OUT') {
             window.location.href = `${window.location.origin}/index.html`;
-            return;
         }
-
-        loadingOverlay.style.display = 'none';
-        appContainer.style.display = 'flex';
-        
-        switchView('home');
-        fetchWeatherForecast();
-        const savedGeminiKey = localStorage.getItem('geminiApiKey');
-        if (savedGeminiKey) { userGeminiKeyInput.value = savedGeminiKey; }
-        
-        try {
-            let { data: profile, error: profileError } = await _supabase
-                .from('profiles')
-                .select('id, role, status')
-                .eq('id', session.user.id)
-                .single();
-            
-            if (profileError && profileError.code !== 'PGRST116') {
-                throw profileError;
-            }
-
-            if (!profile) {
-                console.log('新使用者，正在自動建立 profile...');
-                const isSuperAdmin = session.user.email === SUPER_ADMIN_EMAIL;
-                const newUserRole = isSuperAdmin ? 'admin' : 'member';
-                const newUserStatus = isSuperAdmin ? 'approved' : 'pending';
-
-                const { data: newProfile, error: insertError } = await _supabase
-                    .from('profiles')
-                    .insert({ id: session.user.id, email: session.user.email, role: newUserRole, status: newUserStatus })
-                    .select()
-                    .single();
-
-                if (insertError) throw insertError;
-                profile = newProfile;
-            }
-            
-            if (profile.status === 'approved') {
-                await loadUserProfile(session.user);
-            } else if (profile.status === 'pending') {
-                document.body.innerHTML = `<div style="text-align: center; padding: 50px; font-family: sans-serif; color: #333;"><h2>感謝您的註冊！</h2><p>您的帳號 (<strong>${session.user.email}</strong>) 已成功建立，正在等待管理員審核啟用。</p><p>審核完成後，您就可以正常登入。請您稍後再試。</p><button onclick="supabase.createClient('${SUPABASE_URL}', '${SUPABASE_ANON_KEY}').auth.signOut().then(() => window.location.href='/index.html')" style="padding: 10px 20px; background-color: #e74c3c; color: white; border: none; border-radius: 4px; cursor: pointer; margin-top: 20px;">登出</button></div>`;
-            } else {
-                document.body.innerHTML = `<div style="text-align: center; padding: 50px; font-family: sans-serif; color: #333;"><h2>存取被拒</h2><p>您的帳號目前無法存取此平台，請聯繫管理員。</p><button onclick="supabase.createClient('${SUPABASE_URL}', '${SUPABASE_ANON_KEY}').auth.signOut().then(() => window.location.href='/index.html')" style="padding: 10px 20px; background-color: #e74c3c; color: white; border: none; border-radius: 4px; cursor: pointer; margin-top: 20px;">登出</button></div>`;
-            }
-
-        } catch (error) {
-            console.error('驗證使用者 Profile 時發生嚴重錯誤:', error);
-            document.body.innerHTML = `<div style="text-align: center; padding: 50px; font-family: sans-serif; color: #dc3545;"><h2>應用程式載入失敗</h2><p>無法從資料庫讀取您的使用者設定。</p><p style="color: #666; max-width: 600px; margin: auto;"><b>最可能的原因是資料庫權限不足。</b>請聯繫管理員，確認 Supabase 的 'profiles' 資料表已為已登入的使用者開啟讀取權限 (RLS Policy)。</p><p>錯誤詳情: ${error.message}</p><button onclick="supabase.createClient('${SUPABASE_URL}', '${SUPABASE_ANON_KEY}').auth.signOut().then(() => window.location.href='/index.html')" style="padding: 10px 20px; background-color: #e74c3c; color: white; border: none; border-radius: 4px; cursor: pointer; margin-top: 20px;">登出</button></div>`;
-        }
-
-        _supabase.auth.onAuthStateChange((event, session) => {
-            if (event === 'SIGNED_OUT') {
-                window.location.href = `${window.location.origin}/index.html`;
-            }
-            if (event === 'USER_UPDATED' && session && session.user) {
-                loadUserProfile(session.user);
-            }
-        });
     });
 });
 </script>
