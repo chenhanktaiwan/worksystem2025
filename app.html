@@ -8,25 +8,105 @@
     <script async src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBfAUYXPVz9lqN5QPyzcNmeCg5ect9ZNcA&callback=initMap&libraries=places,marker&loading=async"></script>
     <style>
         /* 全局與佈局 */
-        :root { --sidebar-width: 240px; }
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans TC", sans-serif; margin: 0; background-color: #f4f7f9; }
-        .app-container { display: flex; height: 100vh; }
+        :root { 
+            --header-height: 70px; 
+        }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans TC", sans-serif; 
+            margin: 0; 
+            background-color: #f4f7f9; 
+        }
+        .app-container { 
+            display: flex;
+            flex-direction: column; /* 改為垂直佈局 */
+            height: 100vh; 
+        }
 
-        /* ... 其他 CSS 樣式 (與上一版相同) ... */
+        /* --- 【新】頂部導覽列樣式 --- */
+        .top-nav {
+            height: var(--header-height);
+            background-color: #2c3e50;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 2rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+        }
+        .top-nav-left {
+            display: flex;
+            align-items: center;
+            gap: 2rem;
+        }
+        .main-title {
+            font-family: "Microsoft JhengHei", "微軟正黑體", sans-serif; 
+            font-size: 1.5rem; 
+            font-weight: bold;
+            color: #fff;
+        }
+        .nav-links ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            display: flex;
+            gap: 1.5rem;
+        }
+        .nav-links a {
+            color: #ecf0f1;
+            text-decoration: none;
+            padding: 0.5rem 0;
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s;
+        }
+        .nav-links a:hover {
+            color: #fff;
+            border-bottom-color: #1abc9c;
+        }
+        .nav-links a.active {
+            color: #1abc9c;
+            font-weight: bold;
+        }
+        .top-nav-right {
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+        }
+        .user-profile {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid #34495e;
+        }
+        .user-name {
+            font-weight: bold;
+        }
+        #signout-btn {
+            background-color: #e74c3c;
+            padding: 0.5rem 1rem;
+            width: auto;
+            margin: 0;
+        }
+
+        /* --- 內容區域調整 --- */
+        .content-area { 
+            flex-grow: 1; 
+            padding: 2rem; 
+            overflow-y: auto; 
+            margin-top: var(--header-height); /* 留出頂部導覽列空間 */
+        }
+        
         #loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: #f4f7f9; display: flex; justify-content: center; align-items: center; font-size: 1.2rem; color: #2c3e50; z-index: 9999; }
-        .sidebar { width: var(--sidebar-width); background-color: #2c3e50; color: white; display: flex; flex-direction: column; transition: all 0.3s ease-in-out; }
-        .sidebar-main-title { font-family: "Microsoft JhengHei", "微軟正黑體", sans-serif; font-size: 20pt; font-weight: bold; text-align: center; color: #fff; padding: 1.5rem 1rem; margin: 0; border-bottom: 1px solid #34495e; }
-        .sidebar-header { text-align: center; padding: 1.5rem 1rem; }
-        .sidebar-avatar { width: 80px; height: 80px; border-radius: 50%; object-fit: cover; border: 3px solid #34495e; }
-        .sidebar-username { margin-top: 0.75rem; font-weight: bold; font-size: 1.1em; }
-        .sidebar-nav { flex-grow: 1; }
-        .sidebar-nav ul { list-style: none; padding: 0; margin: 0; }
-        .sidebar-nav a { display: flex; align-items: center; gap: 1rem; padding: 1rem 1.5rem; color: #ecf0f1; text-decoration: none; transition: background-color 0.2s; border-left: 3px solid transparent; }
-        .sidebar-nav a:hover { background-color: #34495e; }
-        .sidebar-nav a.active { background-color: #1abc9c; border-left-color: #16a085; }
-        .sidebar-footer { padding: 1.5rem; }
-        .nav-icon { font-size: 1.2em; }
-        .content-area { flex-grow: 1; padding: 2rem; overflow-y: auto; transition: all 0.3s ease-in-out; }
         .view { display: none; }
         .view.active { display: block; }
         .form-container { background: white; padding: 2.5rem; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); max-width: 600px; }
@@ -36,19 +116,8 @@
         button { width: 100%; padding: 12px; margin-top: 10px; border: none; border-radius: 4px; color: white; font-weight: bold; cursor: pointer; font-size: 1em; }
         #save-profile-btn, #add-user-btn { background-color: #007bff; }
         #update-password-btn { background-color: #17a2b8; }
-        #signout-btn { background-color: #e74c3c; width: auto; display: block; text-align: center; }
         #message, #admin-message { margin-top: 15px; font-weight: bold; min-height: 1.2em; text-align: center; }
         hr { border: 0; border-top: 1px solid #dee2e6; margin: 20px 0; }
-        #sidebar-toggle-btn { background-color: #34495e; width: 100%; margin-bottom: 1rem; }
-        .app-container.sidebar-collapsed .sidebar { width: 88px; }
-        .app-container.sidebar-collapsed .sidebar-main-title { font-size: 0; padding: 0; border: none;}
-        .app-container.sidebar-collapsed .sidebar-header { padding: 1.5rem 0.5rem; }
-        .app-container.sidebar-collapsed .sidebar-avatar { width: 50px; height: 50px; }
-        .app-container.sidebar-collapsed .sidebar-username { display: none; }
-        .app-container.sidebar-collapsed .sidebar-nav a { justify-content: center; padding: 1rem 0; }
-        .app-container.sidebar-collapsed .nav-text { display: none; }
-        .app-container.sidebar-collapsed #sidebar-toggle-btn::after { content: "展開"; }
-        .app-container.sidebar-collapsed #sidebar-toggle-btn { font-size: 0; }
         .page-title { font-family: "Microsoft JhengHei", "微軟正黑體", sans-serif; font-size: 20pt; font-weight: bold; text-align: center; color: #2c3e50; margin-top: 0; margin-bottom: 1rem; }
         .title-divider { border: 0; border-top: 1px solid #e0e0e0; margin-bottom: 2rem; }
         .dashboard-grid { display: flex; flex-wrap: wrap; gap: 2rem; align-items: stretch; }
@@ -92,8 +161,6 @@
             border-radius: 4px;
             box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
         }
-        
-        /* 使用者管理介面樣式 */
         .user-management-container { display: flex; gap: 2rem; flex-wrap: wrap; }
         .user-list, .add-user-form { flex: 1; min-width: 300px; background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
         .user-list ul { list-style: none; padding: 0; }
@@ -108,28 +175,31 @@
 <div id="loading-overlay">載入中...</div>
 
 <div class="app-container" style="display: none;">
-    <aside class="sidebar">
-        <h1 class="sidebar-main-title">我的工作站</h1>
-        <div class="sidebar-header">
-            <img id="sidebar-avatar-preview" class="sidebar-avatar" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="Avatar">
-            <h4 id="sidebar-username-preview" class="sidebar-username">使用者</h4>
+    <!-- 【已修改】HTML 結構改為頂部導覽列 -->
+    <header class="top-nav">
+        <div class="top-nav-left">
+            <h1 class="main-title">我的工作站</h1>
+            <nav class="nav-links">
+                <ul>
+                    <li><a href="#" class="nav-link active" data-view="home">個人首頁</a></li>
+                    <li><a href="#" class="nav-link" data-view="calendar">行事曆</a></li>
+                    <li><a href="#" class="nav-link" data-view="chat">聊天</a></li>
+                    <li><a href="#" class="nav-link" data-view="profile">個人管理後台</a></li>
+                    <li id="user-management-link" style="display: none;"><a href="#" class="nav-link" data-view="user-management">使用者管理</a></li>
+                </ul>
+            </nav>
         </div>
-        <nav class="sidebar-nav">
-            <ul>
-                <li><a href="#" class="nav-link active" data-view="home"><span class="nav-icon">🏠</span> <span class="nav-text">個人首頁</span></a></li>
-                <li><a href="#" class="nav-link" data-view="calendar"><span class="nav-icon">🗓️</span> <span class="nav-text">行事曆</span></a></li>
-                <li><a href="#" class="nav-link" data-view="chat"><span class="nav-icon">💬</span> <span class="nav-text">聊天</span></a></li>
-                <li><a href="#" class="nav-link" data-view="profile"><span class="nav-icon">⚙️</span> <span class="nav-text">個人管理後台</span></a></li>
-                <li id="user-management-link" style="display: none;"><a href="#" class="nav-link" data-view="user-management"><span class="nav-icon">👥</span> <span class="nav-text">使用者管理</span></a></li>
-            </ul>
-        </nav>
-        <div class="sidebar-footer">
-            <button id="sidebar-toggle-btn">收合</button>
+        <div class="top-nav-right">
+            <div class="user-profile">
+                <img id="user-avatar-preview" class="user-avatar" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="Avatar">
+                <span id="user-name-preview" class="user-name">使用者</span>
+            </div>
             <button id="signout-btn">登出</button>
         </div>
-    </aside>
+    </header>
 
     <main class="content-area">
+        <!-- 內容視圖 (Views) 保持不變 -->
         <div id="home-view" class="view active">
             <div class="dashboard-grid">
                 <div id="weather-forecast-container" class="dashboard-item">
@@ -206,7 +276,7 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-    // --- 初始化與取得元素 (未變更) ---
+    // --- 初始化與取得元素 ---
     const SUPABASE_URL = 'https://wvdfuqvebqolvpwhdelg.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind2ZGZ1cXZlYnFvbHZwd2hkZWxnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTIyMzA0MjksImV4cCI6MjA2NzgwNjQyOX0.0VAgxyaoyeFeNbto9pUchwqQVqvHzCzyC22wXb01OKU';
     const { createClient } = supabase;
@@ -215,9 +285,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const loadingOverlay = document.getElementById('loading-overlay');
     const appContainer = document.querySelector('.app-container');
     const weatherContainer = document.getElementById('weather-forecast-container');
-    const sidebarToggleBtn = document.getElementById('sidebar-toggle-btn');
-    const sidebarAvatar = document.getElementById('sidebar-avatar-preview');
-    const sidebarUsername = document.getElementById('sidebar-username-preview');
+    // 【已修改】取得頂部導覽列的元素
+    const userAvatarPreview = document.getElementById('user-avatar-preview');
+    const userNamePreview = document.getElementById('user-name-preview');
     const navLinks = document.querySelectorAll('.nav-link');
     const views = document.querySelectorAll('.view');
     const signOutBtn = document.getElementById('signout-btn');
@@ -251,19 +321,23 @@ document.addEventListener('DOMContentLoaded', () => {
         currentUserProfile = profile;
         const nickname = user.user_metadata.nickname || user.email.split('@')[0];
         const avatarUrl = user.user_metadata.avatar_url ? user.user_metadata.avatar_url : 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMjAiIGhlaWdodD0iMTIwIiB2aWV3Qm94PSIwIDAgMTIwIDEyMCI+CiAgPHJlY3Qgd2lkdGg9IjEyMCIgaGVpZ2h0PSIxMjAiIHN0eWxlPSJmaWxsOiNjZWMwY2U7IiAvPgogIDxwYXRoIGQ9Ik02MCA2MEM3Ni41NjkgNjAgOTAgNDYuNTY5IDkwIDMwQzkwIDEzLjQzMSA3Ni41NjkgMCA2MCAwQzQzLjQzMSAwIDMwIDEzLjQzMSA5MCAzMEMzMCA0Ni45NjkgNDMuNDMxIDYwIDYwIDYwWk02MCA3MEMzNy45MDkgNzEgMjAgODguOTA5IDIwIDExMVYxMjBIMTAwVjExMUMxMDAgODguOTA5IDgyLjA5MSA3MSA2MCA3MVoiIGZpbGw9IiNhYWFiYjAiLz4KPC9zdmc+';
-        sidebarAvatar.src = avatarUrl;
-        sidebarUsername.innerText = nickname;
+        
+        // 【已修改】更新頂部導覽列的資訊
+        userAvatarPreview.src = avatarUrl;
+        userNamePreview.innerText = nickname;
+        
+        // 更新個人管理後台的資訊
         profileAvatar.src = avatarUrl;
         nicknameInput.value = user.user_metadata.nickname || '';
         bioTextarea.value = user.user_metadata.bio || '';
+
         if (user.app_metadata.provider !== 'google' && user.app_metadata.providers.includes('email')) {
             passwordSection.style.display = 'block';
         } else {
             passwordSection.style.display = 'none';
         }
         if (profile && profile.role === 'admin') {
-            userManagementLink.style.display = 'block';
-            fetchUsers();
+            userManagementLink.style.display = 'list-item'; // 改為 list-item
         } else {
             userManagementLink.style.display = 'none';
         }
@@ -271,7 +345,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const switchView = (viewName) => { views.forEach(view => view.classList.remove('active')); navLinks.forEach(link => link.classList.remove('active')); const targetView = document.getElementById(`${viewName}-view`); if (targetView) { targetView.classList.add('active'); } const targetLink = document.querySelector(`.nav-link[data-view="${viewName}"]`); if (targetLink) { targetLink.classList.add('active'); } };
     const signOut = async () => { await _supabase.auth.signOut(); };
     
-    // --- 【已修改】儲存個人資料功能 (繞過 promise 卡住問題) ---
     const updateProfile = () => {
         messageDiv.innerText = "更新中...";
         const newNickname = nicknameInput.value.trim();
@@ -286,12 +359,10 @@ document.addEventListener('DOMContentLoaded', () => {
             if (error) {
                 messageDiv.innerText = `更新失敗: ${error.message}`;
             }
-            // 成功時不需要做任何事，onAuthStateChange 會處理
         });
 
-        // 樂觀更新
         messageDiv.innerText = "個人資料更新請求已送出！";
-        sidebarUsername.innerText = newNickname; // 立即更新側邊欄暱稱，提升體驗
+        userNamePreview.innerText = newNickname; 
     };
 
     const updatePassword = async () => { const newPassword = newPasswordInput.value; if (!newPassword || newPassword.length < 6) { messageDiv.innerText = '密碼長度至少需要 6 個字元。'; return; } messageDiv.innerText = "更新中..."; const { error } = await _supabase.auth.updateUser({ password: newPassword }); if (error) { messageDiv.innerText = '密碼更新失敗: ' + error.message; } else { messageDiv.innerText = '密碼已成功更新！'; newPasswordInput.value = ''; } };
@@ -308,8 +379,6 @@ document.addEventListener('DOMContentLoaded', () => {
         
         try {
             messageDiv.innerText = "大頭貼上傳中...";
-
-            // 步驟 1: 上傳檔案
             const { error: uploadError } = await _supabase.storage
                 .from('avatars')
                 .upload(filePath, file, {
@@ -321,8 +390,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 throw new Error(`上傳失敗: ${uploadError.message}`);
             }
             messageDiv.innerText = "正在取得 URL...";
-
-            // 步驟 2: 取得公開 URL
             const { data: urlData } = _supabase.storage
                 .from('avatars')
                 .getPublicUrl(filePath);
@@ -331,11 +398,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 throw new Error("無法取得大頭貼的公開 URL。");
             }
             
-            // 加上一個時間戳記，強制瀏覽器更新快取
             const publicUrlWithTimestamp = `${urlData.publicUrl}?t=${new Date().getTime()}`;
             messageDiv.innerText = "正在更新個人資料...";
 
-            // 步驟 3: 更新使用者 metadata
             _supabase.auth.updateUser({
                 data: { avatar_url: publicUrlWithTimestamp }
             }).then(({ error }) => {
@@ -345,7 +410,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             });
 
-            // 步驟 4: 樂觀更新
             messageDiv.innerText = "大頭貼更新請求已送出！";
 
         } catch (error) {
@@ -354,7 +418,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    // --- 天氣圖示轉換函式 ---
     const getOwmWeatherIcon = (iconCode) => {
         const mapping = {
             '01d': '☀️', '01n': '🌙',
@@ -370,7 +433,6 @@ document.addEventListener('DOMContentLoaded', () => {
         return mapping[iconCode] || '❓';
     };
 
-    // --- 天氣預報功能 (使用 5-Day Forecast API) ---
     const fetchWeatherForecast = async () => {
         const apiUrl = `/.netlify/functions/weather-proxy`;
 
@@ -468,7 +530,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- 事件綁定 ---
     signOutBtn.addEventListener('click', signOut);
-    sidebarToggleBtn.addEventListener('click', () => { appContainer.classList.toggle('sidebar-collapsed'); });
+    // 【已刪除】側邊欄收合按鈕的事件監聽
     navLinks.forEach(link => {
         link.addEventListener('click', (e) => {
             e.preventDefault();
