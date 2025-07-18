@@ -275,18 +275,60 @@ document.addEventListener('DOMContentLoaded', () => {
     const handleGeminiSearch = async (event) => { event.preventDefault(); const prompt = geminiPromptInput.value; if (!prompt) return; geminiResultsDiv.innerHTML = '<div class="loading-spinner"></div><p style="text-align:center;">思考中...</p>'; try { const chatHistory = [{ role: "user", parts: [{ text: prompt }] }]; const payload = { contents: chatHistory }; const apiKey = userGeminiKeyInput.value.trim() || ""; const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${apiKey}`; const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }); if (!response.ok) { if (response.status === 403) { throw new Error(`API 錯誤 403 (Forbidden)。這通常表示 API 金鑰無效或權限不足。請確認您已啟用 Generative Language API 並檢查金鑰設定。`); } throw new Error(`API 錯誤: ${response.status} ${response.statusText}`); } const result = await response.json(); if (result.candidates && result.candidates.length > 0 && result.candidates[0].content && result.candidates[0].content.parts && result.candidates[0].content.parts.length > 0) { const text = result.candidates[0].content.parts[0].text; geminiResultsDiv.innerText = text; } else { geminiResultsDiv.innerText = '抱歉，無法取得有效的回覆。'; } } catch (error) { console.error("Gemini API 錯誤:", error); geminiResultsDiv.innerText = `發生錯誤：\n${error.message}`; } };
     const fetchUsers = async () => { const { data: users, error } = await _supabase.from('profiles').select('email, role'); if (error) { console.error('取得使用者列表失敗:', error); userListUl.innerHTML = '<li>無法載入列表</li>'; return; } userListUl.innerHTML = ''; users.forEach(user => { const li = document.createElement('li'); li.innerHTML = `<span class="user-email">${user.email}</span> <span class="user-role">${user.role}</span>`; userListUl.appendChild(li); }); };
     const addUser = async (event) => { event.preventDefault(); const email = newUserEmailInput.value.trim(); if (!email) return; adminMessageDiv.innerText = '處理中...'; const { error } = await _supabase.from('profiles').insert({ email: email, role: 'member' }); if (error) { adminMessageDiv.innerText = `新增失敗: ${error.message}`; } else { adminMessageDiv.innerText = `已成功授權 ${email}！請該使用者用此 Email 註冊/登入。`; newUserEmailInput.value = ''; fetchUsers(); } };
+    
+    // --- 【已修改】大頭貼上傳功能 ---
     const uploadAvatar = async (event) => {
         const file = event.target.files[0];
         if (!file || !currentUser) return;
+
         const fileExt = file.name.split('.').pop();
-        const filePath = `${currentUser.id}/${Date.now()}.${fileExt}`;
+        // 建立一個更獨特的路徑，避免因為檔名相同而被快取影響
+        const filePath = `${currentUser.id}/avatar.${fileExt}`;
         messageDiv.innerText = "大頭貼上傳中...";
-        const { error: uploadError } = await _supabase.storage.from('avatars').upload(filePath, file, { upsert: true });
-        if (uploadError) { messageDiv.innerText = "上傳失敗：" + uploadError.message; console.error(uploadError); return; }
-        const { data: urlData } = _supabase.storage.from('avatars').getPublicUrl(filePath);
-        if (!urlData) { messageDiv.innerText = "無法取得大頭貼 URL。"; return; }
-        const { data, error: updateError } = await _supabase.auth.updateUser({ data: { avatar_url: urlData.publicUrl } });
-        if (updateError) { messageDiv.innerText = "更新大頭貼失敗：" + updateError.message; } else { messageDiv.innerText = "大頭貼已更新！"; await loadUserProfile(data.user); }
+
+        try {
+            // 【已修改】確保 upsert:true，這樣才能覆蓋舊的大頭貼
+            const { error: uploadError } = await _supabase.storage
+                .from('avatars')
+                .upload(filePath, file, {
+                    cacheControl: '3600', // 快取一小時
+                    upsert: true
+                });
+
+            if (uploadError) {
+                // 如果上傳失敗，直接拋出錯誤
+                throw uploadError;
+            }
+
+            // 【已修改】在上傳成功後，才來取得公開 URL
+            const { data: urlData } = _supabase.storage
+                .from('avatars')
+                .getPublicUrl(filePath);
+
+            if (!urlData || !urlData.publicUrl) {
+                throw new Error("無法取得大頭貼的公開 URL。");
+            }
+            
+            // 加上一個時間戳記，強制瀏覽器更新快取
+            const publicUrlWithTimestamp = `${urlData.publicUrl}?t=${new Date().getTime()}`;
+
+            // 更新使用者中繼資料中的 avatar_url
+            const { data, error: updateError } = await _supabase.auth.updateUser({
+                data: { avatar_url: publicUrlWithTimestamp }
+            });
+
+            if (updateError) {
+                throw updateError;
+            }
+
+            // 【已修改】所有步驟都成功後，才顯示成功訊息並重新載入使用者資料
+            messageDiv.innerText = "大頭貼已更新！";
+            await loadUserProfile(data.user);
+
+        } catch (error) {
+            messageDiv.innerText = "更新失敗：" + error.message;
+            console.error("大頭貼更新錯誤:", error);
+        }
     };
 
     // --- 【已修改】天氣圖示轉換函式 ---
