@@ -25,7 +25,7 @@ exports.handler = async function (event, context) {
     return {
       statusCode: 200,
       headers: {
-        'Access-Control-Allow-Origin': '*', 
+        'Access-Control-Allow-Origin': 'https://ephemeral-paletas-17b00b.netlify.app/', 
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(data),
