@@ -5,7 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>我的應用程式</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script async src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY&callback=initMap&libraries=places,marker&loading=async"></script>
+    <!-- 【已填入】Google Maps API 金鑰 -->
+    <script async src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBfAUYXPVz9lqN5QPyzcNmeCg5ect9ZNcA&callback=initMap&libraries=places,marker&loading=async"></script>
     <style>
         /* 全局與佈局 */
         :root { 
@@ -159,7 +160,6 @@
                             <button type="submit" id="google-search-btn">搜尋</button>
                         </form>
                     </div>
-                    <!-- 【已修正】移除 API 金鑰輸入框 -->
                     <div class="search-widget gemini-widget">
                         <h4>Gemini AI 搜尋</h4>
                         <form id="gemini-search-form" class="search-form">
@@ -184,10 +184,10 @@
 </div>
 
 <script>
-    // Google Maps 初始化函式 (請務必替換您自己的 API 金鑰和 Map ID)
+    // Google Maps 初始化函式
     async function initMap() {
         try {
-            const defaultPosition = { lat: 25.0479, lng: 121.5171 };
+            const defaultPosition = { lat: 25.0479, lng: 121.5171 }; // 預設位置（台北車站）
             const { Map } = await google.maps.importLibrary("maps");
             const { AdvancedMarkerElement } = await google.maps.importLibrary("marker");
             const { Autocomplete } = await google.maps.importLibrary("places");
@@ -195,7 +195,8 @@
             const map = new Map(document.getElementById("map"), {
                 zoom: 15,
                 center: defaultPosition,
-                mapId: "YOUR_MAP_ID", // 【重要】請換成您自己的 Map ID
+                // 【重要】請務必到 Google Cloud Platform 建立一個 Map ID 並填入此處
+                mapId: "YOUR_MAP_ID", 
                 disableDefaultUI: true, 
                 zoomControl: true,
             });
@@ -222,7 +223,7 @@
         } catch (error) {
             console.error("Google Maps 初始化失敗:", error);
             const mapContainer = document.getElementById("map-container");
-            if(mapContainer) mapContainer.innerHTML = `<p style="color: red; text-align: center; padding: 20px;">地圖載入失敗。請檢查您的 Google Maps API 金鑰是否有效。</p>`;
+            if(mapContainer) mapContainer.innerHTML = `<p style="color: red; text-align: center; padding: 20px;">地圖載入失敗。請檢查您的 Google Maps API 金鑰是否有效，並確認已設定 Map ID。</p>`;
         }
     }
     window.initMap = initMap;
@@ -335,7 +336,6 @@ document.addEventListener('DOMContentLoaded', () => {
             showMessage(messageDiv, '更新失敗: ' + error.message, true);
         } else {
             showMessage(messageDiv, '個人資料已成功儲存！');
-            // Manually update the top nav as user_metadata update is async
             userNamePreview.innerText = nicknameInput.value;
         }
     };
