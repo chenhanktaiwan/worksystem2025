@@ -285,7 +285,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const loadingOverlay = document.getElementById('loading-overlay');
     const appContainer = document.querySelector('.app-container');
     const weatherContainer = document.getElementById('weather-forecast-container');
-    // 【已修改】取得頂部導覽列的元素
     const userAvatarPreview = document.getElementById('user-avatar-preview');
     const userNamePreview = document.getElementById('user-name-preview');
     const navLinks = document.querySelectorAll('.nav-link');
@@ -322,11 +321,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const nickname = user.user_metadata.nickname || user.email.split('@')[0];
         const avatarUrl = user.user_metadata.avatar_url ? user.user_metadata.avatar_url : 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMjAiIGhlaWdodD0iMTIwIiB2aWV3Qm94PSIwIDAgMTIwIDEyMCI+CiAgPHJlY3Qgd2lkdGg9IjEyMCIgaGVpZ2h0PSIxMjAiIHN0eWxlPSJmaWxsOiNjZWMwY2U7IiAvPgogIDxwYXRoIGQ9Ik02MCA2MEM3Ni41NjkgNjAgOTAgNDYuNTY5IDkwIDMwQzkwIDEzLjQzMSA3Ni41NjkgMCA2MCAwQzQzLjQzMSAwIDMwIDEzLjQzMSA5MCAzMEMzMCA0Ni45NjkgNDMuNDMxIDYwIDYwIDYwWk02MCA3MEMzNy45MDkgNzEgMjAgODguOTA5IDIwIDExMVYxMjBIMTAwVjExMUMxMDAgODguOTA5IDgyLjA5MSA3MSA2MCA3MVoiIGZpbGw9IiNhYWFiYjAiLz4KPC9zdmc+';
         
-        // 【已修改】更新頂部導覽列的資訊
         userAvatarPreview.src = avatarUrl;
         userNamePreview.innerText = nickname;
         
-        // 更新個人管理後台的資訊
         profileAvatar.src = avatarUrl;
         nicknameInput.value = user.user_metadata.nickname || '';
         bioTextarea.value = user.user_metadata.bio || '';
@@ -337,7 +334,7 @@ document.addEventListener('DOMContentLoaded', () => {
             passwordSection.style.display = 'none';
         }
         if (profile && profile.role === 'admin') {
-            userManagementLink.style.display = 'list-item'; // 改為 list-item
+            userManagementLink.style.display = 'list-item';
         } else {
             userManagementLink.style.display = 'none';
         }
@@ -367,8 +364,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const updatePassword = async () => { const newPassword = newPasswordInput.value; if (!newPassword || newPassword.length < 6) { messageDiv.innerText = '密碼長度至少需要 6 個字元。'; return; } messageDiv.innerText = "更新中..."; const { error } = await _supabase.auth.updateUser({ password: newPassword }); if (error) { messageDiv.innerText = '密碼更新失敗: ' + error.message; } else { messageDiv.innerText = '密碼已成功更新！'; newPasswordInput.value = ''; } };
     const handleGeminiSearch = async (event) => { event.preventDefault(); const prompt = geminiPromptInput.value; if (!prompt) return; geminiResultsDiv.innerHTML = '<div class="loading-spinner"></div><p style="text-align:center;">思考中...</p>'; try { const chatHistory = [{ role: "user", parts: [{ text: prompt }] }]; const payload = { contents: chatHistory }; const apiKey = userGeminiKeyInput.value.trim() || ""; const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${apiKey}`; const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }); if (!response.ok) { if (response.status === 403) { throw new Error(`API 錯誤 403 (Forbidden)。這通常表示 API 金鑰無效或權限不足。請確認您已啟用 Generative Language API 並檢查金鑰設定。`); } throw new Error(`API 錯誤: ${response.status} ${response.statusText}`); } const result = await response.json(); if (result.candidates && result.candidates.length > 0 && result.candidates[0].content && result.candidates[0].content.parts && result.candidates[0].content.parts.length > 0) { const text = result.candidates[0].content.parts[0].text; geminiResultsDiv.innerText = text; } else { geminiResultsDiv.innerText = '抱歉，無法取得有效的回覆。'; } } catch (error) { console.error("Gemini API 錯誤:", error); geminiResultsDiv.innerText = `發生錯誤：\n${error.message}`; } };
-    const fetchUsers = async () => { const { data: users, error } = await _supabase.from('profiles').select('email, role'); if (error) { console.error('取得使用者列表失敗:', error); userListUl.innerHTML = '<li>無法載入列表</li>'; return; } userListUl.innerHTML = ''; users.forEach(user => { const li = document.createElement('li'); li.innerHTML = `<span class="user-email">${user.email}</span> <span class="user-role">${user.role}</span>`; userListUl.appendChild(li); }); };
-    const addUser = async (event) => { event.preventDefault(); const email = newUserEmailInput.value.trim(); if (!email) return; adminMessageDiv.innerText = '處理中...'; const { error } = await _supabase.from('profiles').insert({ email: email, role: 'member' }); if (error) { adminMessageDiv.innerText = `新增失敗: ${error.message}`; } else { adminMessageDiv.innerText = `已成功授權 ${email}！請該使用者用此 Email 註冊/登入。`; newUserEmailInput.value = ''; fetchUsers(); } };
+    
+    const addUser = async (event) => { event.preventDefault(); const email = newUserEmailInput.value.trim(); if (!email) return; adminMessageDiv.innerText = '處理中...'; const { error } = await _supabase.from('profiles').insert({ email: email, role: 'member', status: 'approved' }); if (error) { adminMessageDiv.innerText = `新增失敗: ${error.message}`; } else { adminMessageDiv.innerText = `已成功授權 ${email}！`; newUserEmailInput.value = ''; fetchUsers(); } };
     
     const uploadAvatar = async (event) => {
         const file = event.target.files[0];
@@ -527,10 +524,61 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error("天氣資訊載入失敗:", error);
         }
     };
+    
+    // 【步驟三-2】修改 fetchUsers 函式
+    const fetchUsers = async () => {
+        const { data: users, error } = await _supabase.from('profiles').select('id, email, role, status');
+        if (error) {
+            console.error('取得使用者列表失敗:', error);
+            userListUl.innerHTML = '<li>無法載入列表</li>';
+            return;
+        }
+        userListUl.innerHTML = '';
+        users.forEach(user => {
+            const li = document.createElement('li');
+            
+            let statusBadge;
+            let actionButton = '';
+            if (user.status === 'pending') {
+                statusBadge = `<span class="user-role" style="background-color: #f39c12; color: white;">待審核</span>`;
+                actionButton = `<button class="approve-btn" data-id="${user.id}" style="padding: 3px 8px; font-size: 0.8em; width: auto; margin: 0; background-color: #2ecc71;">核准</button>`;
+            } else if (user.status === 'approved') {
+                statusBadge = `<span class="user-role" style="background-color: #27ae60; color: white;">已核准</span>`;
+            } else {
+                 statusBadge = `<span class="user-role">${user.status || '未知'}</span>`;
+            }
+
+            li.innerHTML = `
+                <span class="user-email">${user.email}</span>
+                <div>
+                    <span class="user-role">${user.role}</span>
+                    ${statusBadge}
+                    ${actionButton}
+                </div>
+            `;
+            userListUl.appendChild(li);
+        });
+    };
+
+    // 【步驟三-3】新增 approveUser 函式
+    const approveUser = async (userId) => {
+        if (!userId) return;
+        adminMessageDiv.innerText = `正在核准 ${userId}...`;
+        const { error } = await _supabase
+            .from('profiles')
+            .update({ status: 'approved' })
+            .eq('id', userId);
+
+        if (error) {
+            adminMessageDiv.innerText = `核准失敗: ${error.message}`;
+        } else {
+            adminMessageDiv.innerText = `使用者 ${userId} 已成功核准！`;
+            fetchUsers();
+        }
+    };
 
     // --- 事件綁定 ---
     signOutBtn.addEventListener('click', signOut);
-    // 【已刪除】側邊欄收合按鈕的事件監聽
     navLinks.forEach(link => {
         link.addEventListener('click', (e) => {
             e.preventDefault();
@@ -544,29 +592,95 @@ document.addEventListener('DOMContentLoaded', () => {
     updatePasswordBtn.addEventListener('click', updatePassword);
     geminiSearchForm.addEventListener('submit', handleGeminiSearch);
     addUserForm.addEventListener('submit', addUser);
+
+    // 【步驟三-4】新增事件監聽器以處理「核准」按鈕的點擊
+    userListUl.addEventListener('click', (event) => {
+        if (event.target.classList.contains('approve-btn')) {
+            const userId = event.target.dataset.id;
+            // 為了避免意外，這裡使用 confirm 讓管理員再次確認
+            if (confirm(`您確定要核准這位使用者 (${userId}) 嗎？`)) {
+                 approveUser(userId);
+            }
+        }
+    });
+
     userGeminiKeyInput.addEventListener('input', () => { localStorage.setItem('geminiApiKey', userGeminiKeyInput.value); });
 
-    // --- 核心邏輯 (未變更) ---
+    // 【步驟二】替換 onAuthStateChange 的核心邏輯
     _supabase.auth.onAuthStateChange(async (event, session) => {
-        if (event === 'INITIAL_SESSION') {
-            loadingOverlay.style.display = 'none';
-            if (session && session.user) {
-                const { data: profile } = await _supabase.from('profiles').select('id').eq('id', session.user.id).single();
-                if (profile) {
-                    appContainer.style.display = 'flex';
-                    await loadUserProfile(session.user);
-                    switchView('home');
-                    fetchWeatherForecast();
-                    const savedGeminiKey = localStorage.getItem('geminiApiKey');
-                    if (savedGeminiKey) { userGeminiKeyInput.value = savedGeminiKey; }
-                } else {
-                    alert('您的帳號尚未被授權，請聯絡管理員。');
-                    await _supabase.auth.signOut();
-                    window.location.href = `${window.location.origin}/index.html`;
-                }
-            } else {
+        if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN') {
+            if (!session || !session.user) {
+                loadingOverlay.style.display = 'none';
                 window.location.href = `${window.location.origin}/index.html`;
+                return;
             }
+
+            // 1. 檢查使用者 Profile 是否存在
+            let { data: profile, error: profileError } = await _supabase
+                .from('profiles')
+                .select('id, role, status') // 同時取得 status 欄位
+                .eq('id', session.user.id)
+                .single();
+
+            // 2. 如果 Profile 不存在，為新使用者自動建立一個
+            if (profileError && profileError.code === 'PGRST116') {
+                console.log('新使用者，正在自動建立 profile 並設定為 pending...');
+                const { data: newProfile, error: insertError } = await _supabase
+                    .from('profiles')
+                    .insert({
+                        id: session.user.id,
+                        email: session.user.email,
+                        role: 'member', // 預設角色
+                        status: 'pending'  // 預設狀態為待審核
+                    })
+                    .select('id, role, status')
+                    .single();
+
+                if (insertError) {
+                    console.error('自動建立 profile 失敗:', insertError);
+                    document.body.innerHTML = `<div style="text-align: center; padding: 50px; font-family: sans-serif;"><h2>註冊失敗</h2><p>無法為您建立帳號，請聯繫管理員。</p></div>`;
+                    await _supabase.auth.signOut();
+                    return;
+                }
+                profile = newProfile; // 將新建立的 profile 指派回去
+            }
+
+            // 3. 根據 Profile 的 status 決定顯示內容
+            loadingOverlay.style.display = 'none';
+
+            if (profile && profile.status === 'approved') {
+                // 狀態為 'approved'，正常顯示應用程式
+                appContainer.style.display = 'flex';
+                await loadUserProfile(session.user);
+                // 只有管理員才需要載入使用者列表
+                if (profile.role === 'admin') {
+                    fetchUsers();
+                }
+                switchView('home');
+                fetchWeatherForecast();
+                const savedGeminiKey = localStorage.getItem('geminiApiKey');
+                if (savedGeminiKey) { userGeminiKeyInput.value = savedGeminiKey; }
+            } else if (profile && profile.status === 'pending') {
+                // 狀態為 'pending'，顯示等待審核畫面
+                document.body.innerHTML = `
+                    <div style="text-align: center; padding: 50px; font-family: sans-serif; color: #333;">
+                        <h2>感謝您的註冊！</h2>
+                        <p>您的帳號 (<strong>${session.user.email}</strong>) 已成功建立，正在等待管理員審核啟用。</p>
+                        <p>審核完成後，您就可以正常登入。請您稍後再試。</p>
+                        <button onclick="supabase.createClient('${SUPABASE_URL}', '${SUPABASE_ANON_KEY}').auth.signOut()" style="padding: 10px 20px; background-color: #e74c3c; color: white; border: none; border-radius: 4px; cursor: pointer; margin-top: 20px;">登出</button>
+                    </div>
+                `;
+            } else {
+                // 其他狀態 (例如 'rejected' 或發生錯誤)，顯示錯誤並登出
+                 document.body.innerHTML = `
+                    <div style="text-align: center; padding: 50px; font-family: sans-serif; color: #333;">
+                        <h2>存取被拒</h2>
+                        <p>您的帳號目前無法存取此平台，請聯繫管理員。</p>
+                        <button onclick="supabase.createClient('${SUPABASE_URL}', '${SUPABASE_ANON_KEY}').auth.signOut()" style="padding: 10px 20px; background-color: #e74c3c; color: white; border: none; border-radius: 4px; cursor: pointer; margin-top: 20px;">登出</button>
+                    </div>
+                `;
+            }
+
         } else if (event === 'SIGNED_OUT') {
             window.location.href = `${window.location.origin}/index.html`;
         } else if (event === 'USER_UPDATED' && session && session.user) {
