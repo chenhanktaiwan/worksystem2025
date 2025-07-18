@@ -1,24 +1,26 @@
 // /netlify/functions/weather-proxy.js
 
 exports.handler = async function (event, context) {
-  const CWA_API_KEY = process.env.CWA_API_KEY;
-  const city = event.queryStringParameters.locationName || '臺北市';
+  // 【已修改】從環境變數讀取新的 OpenWeatherMap API 金鑰
+  const OWM_API_KEY = process.env.OPENWEATHERMAP_API_KEY;
+
+  // 【已修改】使用臺北市的經緯度
+  const lat = '25.0478'; // 臺北緯度
+  const lon = '121.5171'; // 臺北經度
   
-  // 【已修改】更換為「未來一週天氣預報」的資料集識別碼
-  const dataId = 'F-D0047-091';
-  
-  // 注意：這個 API 需要的是 locationName，我們沿用前端傳來的城市名稱
-  const apiUrl = `https://opendata.cwa.gov.tw/api/v1/rest/datastore/${dataId}?Authorization=${CWA_API_KEY}&locationName=${encodeURIComponent(city)}&elementName=Wx,PoP,MinT,MaxT`;
+  // 【已修改】OpenWeatherMap One Call API 3.0 的 URL
+  // exclude=current,minutely,hourly,alerts -> 我們只需要每日預報 (daily)
+  // units=metric -> 單位使用攝氏度
+  // lang=zh_tw -> 語言使用繁體中文
+  const apiUrl = `https://api.openweathermap.org/data/3.0/onecall?lat=${lat}&lon=${lon}&exclude=current,minutely,hourly,alerts&appid=${OWM_API_KEY}&units=metric&lang=zh_tw`;
 
   try {
     const fetch = require('node-fetch');
-
     const response = await fetch(apiUrl);
     
     if (!response.ok) {
-        // 如果 API 回應不成功，將錯誤訊息更詳細地傳回前端
-        const errorBody = await response.text();
-        throw new Error(`API request failed with status ${response.status}: ${errorBody}`);
+      const errorBody = await response.text();
+      throw new Error(`API request failed with status ${response.status}: ${errorBody}`);
     }
 
     const data = await response.json();
@@ -32,7 +34,7 @@ exports.handler = async function (event, context) {
       body: JSON.stringify(data),
     };
   } catch (error) {
-    console.error("Weather proxy error:", error); // 在後台日誌中印出更詳細的錯誤
+    console.error("Weather proxy error:", error);
     return {
       statusCode: 500,
       body: JSON.stringify({ error: 'Failed to fetch weather data', message: error.message }),
