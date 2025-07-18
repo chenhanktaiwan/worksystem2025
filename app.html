@@ -243,7 +243,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentUser = null;
     let currentUserProfile = null;
 
-    // --- 功能函式 (未變更部分) ---
+    // --- 功能函式 ---
     const loadUserProfile = async (user) => {
         currentUser = user;
         const { data: profile, error } = await _supabase.from('profiles').select('*').eq('id', user.id).single();
@@ -270,13 +270,35 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     const switchView = (viewName) => { views.forEach(view => view.classList.remove('active')); navLinks.forEach(link => link.classList.remove('active')); const targetView = document.getElementById(`${viewName}-view`); if (targetView) { targetView.classList.add('active'); } const targetLink = document.querySelector(`.nav-link[data-view="${viewName}"]`); if (targetLink) { targetLink.classList.add('active'); } };
     const signOut = async () => { await _supabase.auth.signOut(); };
-    const updateProfile = async () => { messageDiv.innerText = "更新中..."; const { data, error } = await _supabase.auth.updateUser({ data: { nickname: nicknameInput.value.trim(), bio: bioTextarea.value.trim() } }); if (error) { messageDiv.innerText = "更新失敗：" + error.message; } else { messageDiv.innerText = "個人資料已成功儲存！"; loadUserProfile(data.user); } };
+    
+    // --- 【已修改】儲存個人資料功能 (繞過 promise 卡住問題) ---
+    const updateProfile = () => {
+        messageDiv.innerText = "更新中...";
+        const newNickname = nicknameInput.value.trim();
+        const newBio = bioTextarea.value.trim();
+
+        _supabase.auth.updateUser({
+            data: {
+                nickname: newNickname,
+                bio: newBio
+            }
+        }).then(({ error }) => {
+            if (error) {
+                messageDiv.innerText = `更新失敗: ${error.message}`;
+            }
+            // 成功時不需要做任何事，onAuthStateChange 會處理
+        });
+
+        // 樂觀更新
+        messageDiv.innerText = "個人資料更新請求已送出！";
+        sidebarUsername.innerText = newNickname; // 立即更新側邊欄暱稱，提升體驗
+    };
+
     const updatePassword = async () => { const newPassword = newPasswordInput.value; if (!newPassword || newPassword.length < 6) { messageDiv.innerText = '密碼長度至少需要 6 個字元。'; return; } messageDiv.innerText = "更新中..."; const { error } = await _supabase.auth.updateUser({ password: newPassword }); if (error) { messageDiv.innerText = '密碼更新失敗: ' + error.message; } else { messageDiv.innerText = '密碼已成功更新！'; newPasswordInput.value = ''; } };
     const handleGeminiSearch = async (event) => { event.preventDefault(); const prompt = geminiPromptInput.value; if (!prompt) return; geminiResultsDiv.innerHTML = '<div class="loading-spinner"></div><p style="text-align:center;">思考中...</p>'; try { const chatHistory = [{ role: "user", parts: [{ text: prompt }] }]; const payload = { contents: chatHistory }; const apiKey = userGeminiKeyInput.value.trim() || ""; const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${apiKey}`; const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }); if (!response.ok) { if (response.status === 403) { throw new Error(`API 錯誤 403 (Forbidden)。這通常表示 API 金鑰無效或權限不足。請確認您已啟用 Generative Language API 並檢查金鑰設定。`); } throw new Error(`API 錯誤: ${response.status} ${response.statusText}`); } const result = await response.json(); if (result.candidates && result.candidates.length > 0 && result.candidates[0].content && result.candidates[0].content.parts && result.candidates[0].content.parts.length > 0) { const text = result.candidates[0].content.parts[0].text; geminiResultsDiv.innerText = text; } else { geminiResultsDiv.innerText = '抱歉，無法取得有效的回覆。'; } } catch (error) { console.error("Gemini API 錯誤:", error); geminiResultsDiv.innerText = `發生錯誤：\n${error.message}`; } };
     const fetchUsers = async () => { const { data: users, error } = await _supabase.from('profiles').select('email, role'); if (error) { console.error('取得使用者列表失敗:', error); userListUl.innerHTML = '<li>無法載入列表</li>'; return; } userListUl.innerHTML = ''; users.forEach(user => { const li = document.createElement('li'); li.innerHTML = `<span class="user-email">${user.email}</span> <span class="user-role">${user.role}</span>`; userListUl.appendChild(li); }); };
     const addUser = async (event) => { event.preventDefault(); const email = newUserEmailInput.value.trim(); if (!email) return; adminMessageDiv.innerText = '處理中...'; const { error } = await _supabase.from('profiles').insert({ email: email, role: 'member' }); if (error) { adminMessageDiv.innerText = `新增失敗: ${error.message}`; } else { adminMessageDiv.innerText = `已成功授權 ${email}！請該使用者用此 Email 註冊/登入。`; newUserEmailInput.value = ''; fetchUsers(); } };
     
-    // --- 【已修改】大頭貼上傳功能 (繞過 promise 卡住問題) ---
     const uploadAvatar = async (event) => {
         const file = event.target.files[0];
         if (!file || !currentUser) return;
@@ -314,21 +336,16 @@ document.addEventListener('DOMContentLoaded', () => {
             messageDiv.innerText = "正在更新個人資料...";
 
             // 步驟 3: 更新使用者 metadata
-            // 我們發出請求，但不等待它完成 (不使用 await)，因為 onAuthStateChange 會處理 UI 更新。
-            // 這樣可以避免 promise 卡住的問題。
             _supabase.auth.updateUser({
                 data: { avatar_url: publicUrlWithTimestamp }
             }).then(({ error }) => {
-                // 如果在背景中真的發生錯誤，我們仍然可以捕捉到並顯示它
                 if (error) {
                     messageDiv.innerText = `背景更新錯誤: ${error.message}`;
                     console.error("背景更新錯誤:", error);
                 }
             });
 
-            // 步驟 4: 樂觀更新 (Optimistic Update)
-            // 我們假設更新會成功，並立即顯示成功訊息。
-            // onAuthStateChange listener 會在稍後負責實際的圖片重載。
+            // 步驟 4: 樂觀更新
             messageDiv.innerText = "大頭貼更新請求已送出！";
 
         } catch (error) {
@@ -449,7 +466,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    // --- 事件綁定 (未變更) ---
+    // --- 事件綁定 ---
     signOutBtn.addEventListener('click', signOut);
     sidebarToggleBtn.addEventListener('click', () => { appContainer.classList.toggle('sidebar-collapsed'); });
     navLinks.forEach(link => {
