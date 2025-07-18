@@ -175,7 +175,6 @@
 <div id="loading-overlay">載入中...</div>
 
 <div class="app-container" style="display: none;">
-    <!-- 【已修改】HTML 結構改為頂部導覽列 -->
     <header class="top-nav">
         <div class="top-nav-left">
             <h1 class="main-title">我的工作站</h1>
@@ -199,7 +198,6 @@
     </header>
 
     <main class="content-area">
-        <!-- 內容視圖 (Views) 保持不變 -->
         <div id="home-view" class="view active">
             <div class="dashboard-grid">
                 <div id="weather-forecast-container" class="dashboard-item">
@@ -281,6 +279,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind2ZGZ1cXZlYnFvbHZwd2hkZWxnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTIyMzA0MjksImV4cCI6MjA2NzgwNjQyOX0.0VAgxyaoyeFeNbto9pUchwqQVqvHzCzyC22wXb01OKU';
     const { createClient } = supabase;
     const _supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    
+    // 【已更新】超級管理員設定
+    const SUPER_ADMIN_EMAIL = 'yakult16923@gmail.com'; 
     
     const loadingOverlay = document.getElementById('loading-overlay');
     const appContainer = document.querySelector('.app-container');
@@ -525,7 +526,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
     
-    // 【步驟三-2】修改 fetchUsers 函式
     const fetchUsers = async () => {
         const { data: users, error } = await _supabase.from('profiles').select('id, email, role, status');
         if (error) {
@@ -560,7 +560,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     };
 
-    // 【步驟三-3】新增 approveUser 函式
     const approveUser = async (userId) => {
         if (!userId) return;
         adminMessageDiv.innerText = `正在核准 ${userId}...`;
@@ -593,11 +592,9 @@ document.addEventListener('DOMContentLoaded', () => {
     geminiSearchForm.addEventListener('submit', handleGeminiSearch);
     addUserForm.addEventListener('submit', addUser);
 
-    // 【步驟三-4】新增事件監聽器以處理「核准」按鈕的點擊
     userListUl.addEventListener('click', (event) => {
         if (event.target.classList.contains('approve-btn')) {
             const userId = event.target.dataset.id;
-            // 為了避免意外，這裡使用 confirm 讓管理員再次確認
             if (confirm(`您確定要核准這位使用者 (${userId}) 嗎？`)) {
                  approveUser(userId);
             }
@@ -606,7 +603,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     userGeminiKeyInput.addEventListener('input', () => { localStorage.setItem('geminiApiKey', userGeminiKeyInput.value); });
 
-    // 【步驟二】替換 onAuthStateChange 的核心邏輯
+    // --- 核心邏輯 (新版 - 包含超級管理員和狀態審核) ---
     _supabase.auth.onAuthStateChange(async (event, session) => {
         if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN') {
             if (!session || !session.user) {
@@ -618,41 +615,47 @@ document.addEventListener('DOMContentLoaded', () => {
             // 1. 檢查使用者 Profile 是否存在
             let { data: profile, error: profileError } = await _supabase
                 .from('profiles')
-                .select('id, role, status') // 同時取得 status 欄位
+                .select('id, role, status')
                 .eq('id', session.user.id)
                 .single();
 
             // 2. 如果 Profile 不存在，為新使用者自動建立一個
             if (profileError && profileError.code === 'PGRST116') {
-                console.log('新使用者，正在自動建立 profile 並設定為 pending...');
+                console.log('新使用者，正在自動建立 profile...');
+                
+                // 判斷是否為超級管理員
+                const isSuperAdmin = session.user.email === SUPER_ADMIN_EMAIL;
+                const newUserRole = isSuperAdmin ? 'admin' : 'member';
+                const newUserStatus = isSuperAdmin ? 'approved' : 'pending';
+
+                console.log(`新使用者 Email: ${session.user.email}, 角色: ${newUserRole}, 狀態: ${newUserStatus}`);
+
                 const { data: newProfile, error: insertError } = await _supabase
                     .from('profiles')
                     .insert({
                         id: session.user.id,
                         email: session.user.email,
-                        role: 'member', // 預設角色
-                        status: 'pending'  // 預設狀態為待審核
+                        role: newUserRole,
+                        status: newUserStatus
                     })
                     .select('id, role, status')
                     .single();
 
                 if (insertError) {
                     console.error('自動建立 profile 失敗:', insertError);
-                    document.body.innerHTML = `<div style="text-align: center; padding: 50px; font-family: sans-serif;"><h2>註冊失敗</h2><p>無法為您建立帳號，請聯繫管理員。</p></div>`;
+                    document.body.innerHTML = `<div style="text-align: center; padding: 50px; font-family: sans-serif;"><h2>註冊失敗</h2><p>無法為您建立帳號，請聯繫管理員。</p><p>錯誤訊息: ${insertError.message}</p></div>`;
                     await _supabase.auth.signOut();
                     return;
                 }
-                profile = newProfile; // 將新建立的 profile 指派回去
+                profile = newProfile;
             }
 
             // 3. 根據 Profile 的 status 決定顯示內容
             loadingOverlay.style.display = 'none';
 
             if (profile && profile.status === 'approved') {
-                // 狀態為 'approved'，正常顯示應用程式
                 appContainer.style.display = 'flex';
                 await loadUserProfile(session.user);
-                // 只有管理員才需要載入使用者列表
                 if (profile.role === 'admin') {
                     fetchUsers();
                 }
@@ -661,7 +664,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 const savedGeminiKey = localStorage.getItem('geminiApiKey');
                 if (savedGeminiKey) { userGeminiKeyInput.value = savedGeminiKey; }
             } else if (profile && profile.status === 'pending') {
-                // 狀態為 'pending'，顯示等待審核畫面
                 document.body.innerHTML = `
                     <div style="text-align: center; padding: 50px; font-family: sans-serif; color: #333;">
                         <h2>感謝您的註冊！</h2>
@@ -671,7 +673,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                 `;
             } else {
-                // 其他狀態 (例如 'rejected' 或發生錯誤)，顯示錯誤並登出
                  document.body.innerHTML = `
                     <div style="text-align: center; padding: 50px; font-family: sans-serif; color: #333;">
                         <h2>存取被拒</h2>
