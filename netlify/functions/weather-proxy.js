@@ -6,7 +6,8 @@ exports.handler = async function (event, context) {
   
   // 從前端請求的 URL 中取得城市名稱
   const city = event.queryStringParameters.locationName || '臺北市';
-  const dataId = 'F-C0032-005';
+  // 【已修改】更新為新的資料集識別碼
+  const dataId = 'F-C0032-006'; 
   
   const apiUrl = `https://opendata.cwa.gov.tw/api/v1/rest/datastore/${dataId}?Authorization=${CWA_API_KEY}&locationName=${encodeURIComponent(city)}&elementName=Wx,PoP,MinT,MaxT`;
 
