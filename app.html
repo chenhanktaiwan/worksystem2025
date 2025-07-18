@@ -250,7 +250,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (error && error.code !== 'PGRST116') { console.error('讀取 profile 失敗:', error); return; }
         currentUserProfile = profile;
         const nickname = user.user_metadata.nickname || user.email.split('@')[0];
-        const avatarUrl = user.user_metadata.avatar_url ? user.user_metadata.avatar_url : 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMjAiIGhlaWdodD0iMTIwIiB2aWV3Qm94PSIwIDAgMTIwIDEyMCI+CiAgPHJlY3Qgd2lkdGg9IjEyMCIgaGVpZ2h0PSIxMjAiIHN0eWxlPSJmaWxsOiNjZWMwY2U7IiAvPgogIDxwYXRoIGQ9Ik02MCA2MEM3Ni41NjkgNjAgOTAgNDYuNTY5IDkwIDMwQzkwIDEzLjQzMSA3Ni41NjkgMCA2MCAwQzQzLjQzMSAwIDMwIDEzLjQzMSA5MCAzMEMzMCA0Ni41NjkgNDMuNDMxIDYwIDYwIDYwWk02MCA3MEMzNy45MDkgNzEgMjAgODguOTA5IDIwIDExMVYxMjBIMTAwVjExMUMxMDAgODguOTA5IDgyLjA5MSA3MSA2MCA3MVoiIGZpbGw9IiNhYWFiYjAiLz4KPC9zdmc+';
+        const avatarUrl = user.user_metadata.avatar_url ? user.user_metadata.avatar_url : 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMjAiIGhlaWdodD0iMTIwIiB2aWV3Qm94PSIwIDAgMTIwIDEyMCI+CiAgPHJlY3Qgd2lkdGg9IjEyMCIgaGVpZ2h0PSIxMjAiIHN0eWxlPSJmaWxsOiNjZWMwY2U7IiAvPgogIDxwYXRoIGQ9Ik02MCA2MEM3Ni41NjkgNjAgOTAgNDYuNTY5IDkwIDMwQzkwIDEzLjQzMSA3Ni41NjkgMCA2MCAwQzQzLjQzMSAwIDMwIDEzLjQzMSA5MCAzMEMzMCA0Ni45NjkgNDMuNDMxIDYwIDYwIDYwWk02MCA3MEMzNy45MDkgNzEgMjAgODguOTA5IDIwIDExMVYxMjBIMTAwVjExMUMxMDAgODguOTA5IDgyLjA5MSA3MSA2MCA3MVoiIGZpbGw9IiNhYWFiYjAiLz4KPC9zdmc+';
         sidebarAvatar.src = avatarUrl;
         sidebarUsername.innerText = nickname;
         profileAvatar.src = avatarUrl;
@@ -276,7 +276,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const fetchUsers = async () => { const { data: users, error } = await _supabase.from('profiles').select('email, role'); if (error) { console.error('取得使用者列表失敗:', error); userListUl.innerHTML = '<li>無法載入列表</li>'; return; } userListUl.innerHTML = ''; users.forEach(user => { const li = document.createElement('li'); li.innerHTML = `<span class="user-email">${user.email}</span> <span class="user-role">${user.role}</span>`; userListUl.appendChild(li); }); };
     const addUser = async (event) => { event.preventDefault(); const email = newUserEmailInput.value.trim(); if (!email) return; adminMessageDiv.innerText = '處理中...'; const { error } = await _supabase.from('profiles').insert({ email: email, role: 'member' }); if (error) { adminMessageDiv.innerText = `新增失敗: ${error.message}`; } else { adminMessageDiv.innerText = `已成功授權 ${email}！請該使用者用此 Email 註冊/登入。`; newUserEmailInput.value = ''; fetchUsers(); } };
     
-    // --- 【已修改】大頭貼上傳功能 (增加詳細步驟與錯誤處理) ---
+    // --- 【已修改】大頭貼上傳功能 (繞過 promise 卡住問題) ---
     const uploadAvatar = async (event) => {
         const file = event.target.files[0];
         if (!file || !currentUser) return;
@@ -314,17 +314,22 @@ document.addEventListener('DOMContentLoaded', () => {
             messageDiv.innerText = "正在更新個人資料...";
 
             // 步驟 3: 更新使用者 metadata
-            const { data: userUpdateData, error: updateError } = await _supabase.auth.updateUser({
+            // 我們發出請求，但不等待它完成 (不使用 await)，因為 onAuthStateChange 會處理 UI 更新。
+            // 這樣可以避免 promise 卡住的問題。
+            _supabase.auth.updateUser({
                 data: { avatar_url: publicUrlWithTimestamp }
+            }).then(({ error }) => {
+                // 如果在背景中真的發生錯誤，我們仍然可以捕捉到並顯示它
+                if (error) {
+                    messageDiv.innerText = `背景更新錯誤: ${error.message}`;
+                    console.error("背景更新錯誤:", error);
+                }
             });
 
-            if (updateError) {
-                throw new Error(`更新使用者資料失敗: ${updateError.message}`);
-            }
-
-            // 步驟 4: 成功
-            messageDiv.innerText = "大頭貼已更新！";
-            await loadUserProfile(userUpdateData.user);
+            // 步驟 4: 樂觀更新 (Optimistic Update)
+            // 我們假設更新會成功，並立即顯示成功訊息。
+            // onAuthStateChange listener 會在稍後負責實際的圖片重載。
+            messageDiv.innerText = "大頭貼更新請求已送出！";
 
         } catch (error) {
             messageDiv.innerText = `錯誤: ${error.message}`;
