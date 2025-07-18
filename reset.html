@@ -52,11 +52,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const updatePassword = async () => {
         const newPassword = newPasswordInput.value;
-        if (!newPassword || newPassword.length < 6) {
-            messageDiv.innerText = '密碼長度至少需要 6 個字元。';
-            messageDiv.className = 'error';
-            return;
-        }
+        if (!newPassword || newPassword.length < 8) {
+    messageDiv.innerText = '密碼長度至少需要 8 個字元。';
+    messageDiv.className = 'error';
+    return;
+}
         messageDiv.innerText = "更新中...";
         const { error } = await _supabase.auth.updateUser({ password: newPassword });
         if (error) {
