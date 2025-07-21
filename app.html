@@ -76,21 +76,7 @@
         /* 首頁儀表板 */
         .dashboard-grid { display: flex; flex-wrap: wrap; gap: 2rem; align-items: stretch; }
         .dashboard-item { flex: 1; min-width: 300px; display: flex; flex-direction: column; }
-        .weather-widget { background: #2D9CDB; color: white; border-radius: 8px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); font-family: "Microsoft JhengHei", "微軟正黑體", sans-serif; flex-grow: 1; }
-        .weather-today { display: flex; justify-content: space-between; align-items: center; padding-bottom: 15px; border-bottom: 1px solid rgba(255, 255, 255, 0.3); }
-        .weather-today-main { display: flex; align-items: center; gap: 15px; }
-        .weather-today-icon { font-size: 3.5rem; line-height: 1; }
-        .weather-today-details .condition { font-size: 1.2rem; font-weight: bold; }
-        .weather-today-details .pop { font-size: 0.9rem; opacity: 0.9; }
-        .weather-today-temp { font-size: 2rem; font-weight: bold; line-height: 1; }
-        .weather-today-location { font-size: 1.2rem; font-weight: bold; text-align: right; }
-        .weather-forecast { display: flex; justify-content: space-between; padding-top: 15px; overflow-x: auto; }
-        .forecast-day { text-align: center; flex: 1; min-width: 60px; padding: 0 5px; }
-        .forecast-day .date { font-size: 0.8rem; font-weight: bold; }
-        .forecast-day .icon { font-size: 2rem; margin: 8px 0; }
-        .forecast-day .temp { font-size: 1rem; font-weight: bold; }
-        .forecast-day .pop { font-size: 0.8em; opacity: 0.8; margin-top: 4px;}
-        .search-widget { background: #ffffff; border-radius: 8px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        .search-widget { background: #ffffff; border-radius: 8px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); flex-grow: 1; }
         .search-widget h4 { margin-top: 0; margin-bottom: 15px; color: #343a40; text-align: center; }
         .search-form { display: flex; gap: 10px; }
         .search-form input[type="text"] { flex-grow: 1; margin-bottom: 0; }
@@ -147,9 +133,7 @@
         <!-- 首頁 -->
         <div id="home-view" class="view active">
             <div class="dashboard-grid">
-                <div id="weather-forecast-container" class="dashboard-item">
-                    <p>正在載入天氣資訊...</p>
-                </div>
+                <!-- 天氣區塊已移除 -->
                 <div id="search-column" class="dashboard-item">
                     <div class="search-widget">
                         <h4>Google 搜尋</h4>
@@ -198,7 +182,7 @@
         // --- 2. 取得頁面元素 ---
         const loadingOverlay = document.getElementById('loading-overlay');
         const appContainer = document.querySelector('.app-container');
-        const weatherContainer = document.getElementById('weather-forecast-container');
+        // const weatherContainer = document.getElementById('weather-forecast-container'); // 天氣功能已移除
         const userAvatarPreview = document.getElementById('user-avatar-preview');
         const userNamePreview = document.getElementById('user-name-preview');
         const navLinks = document.querySelectorAll('.nav-link');
@@ -439,24 +423,9 @@
             }
         };
 
-        const getOwmWeatherIcon = (iconCode) => {
-            const icons = { '01d': '☀️', '01n': '🌙', '02d': '⛅️', '02n': '☁️', '03d': '☁️', '03n': '☁️', '04d': '☁️', '04n': '☁️', '09d': '🌧️', '09n': '🌧️', '10d': '🌦️', '10n': '🌧️', '11d': '⛈️', '11n': '⛈️', '13d': '❄️', '13n': '❄️', '50d': '🌫️', '50n': '🌫️' };
-            return icons[iconCode] || '❓';
-        };
-
-        const fetchWeatherForecast = async () => {
-            try {
-                const response = await fetch('/.netlify/functions/weather-proxy');
-                if (!response.ok) throw new Error(`天氣伺服器錯誤: ${response.statusText}`);
-                const data = await response.json();
-                const today = data.list[0];
-                const generateForecastHtml = (list) => list.filter(item => item.dt_txt.includes("12:00:00")).slice(0, 5).map(fc => `<div class="forecast-day"><div class="date">${new Date(fc.dt*1000).toLocaleDateString('zh-TW',{weekday:'short'}).replace('週','')}</div><div class="icon">${getOwmWeatherIcon(fc.weather[0].icon)}</div><div class="temp">${Math.round(fc.main.temp)}°</div><div class="pop">${Math.round(fc.pop*100)}%</div></div>`).join('');
-                weatherContainer.innerHTML = `<div class="weather-widget"><div class="weather-today"><div class="weather-today-main"><div class="weather-today-icon">${getOwmWeatherIcon(today.weather[0].icon)}</div><div class="weather-today-details"><div class="condition">${today.weather[0].description}</div><div class="pop">降雨機率: ${Math.round(today.pop * 100)}%</div></div></div><div class="weather-today-temp">${Math.round(today.main.temp)}°C</div></div><div class="weather-today-location">${data.city.name}</div><div class="weather-forecast">${generateForecastHtml(data.list)}</div></div>`;
-            } catch (error) {
-                console.error('取得天氣失敗:', error);
-                weatherContainer.innerHTML = `<p style="color: red; text-align: center;">無法載入天氣資訊。<br>${error.message}</p>`;
-            }
-        };
+        // 天氣相關功能已移除
+        // const getOwmWeatherIcon = ...
+        // const fetchWeatherForecast = ...
         
         // --- 4. 事件綁定 ---
         signOutBtn.addEventListener('click', signOut);
@@ -494,10 +463,9 @@
 
                     if (profile && profile.status === 'approved') {
                         await loadUserProfile(session.user);
-                        await Promise.all([
-                            fetchWeatherForecast(),
-                            initMap()
-                        ]);
+                        
+                        // 天氣功能已移除，現在只初始化地圖
+                        await initMap();
                         
                         loadingOverlay.style.display = 'none';
                         appContainer.style.display = 'flex';
