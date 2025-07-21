@@ -3,421 +3,98 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>我的應用程式</title>
+    <title>應用程式 - 偵錯模式</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        /* 全局與佈局 */
-        :root { 
-            --header-height: 70px; 
-        }
-        body { 
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans TC", sans-serif; 
-            margin: 0; 
-            background-color: #f4f7f9; 
-        }
-        .app-container { 
-            display: flex;
-            flex-direction: column;
-            height: 100vh; 
-        }
-
-        /* 頂部導覽列樣式 */
-        .top-nav {
-            height: var(--header-height);
-            background-color: #2c3e50;
-            color: white;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 0 2rem;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            z-index: 1000;
-        }
-        .top-nav-left { display: flex; align-items: center; gap: 2rem; }
-        .main-title { font-family: "Microsoft JhengHei", "微軟正黑體", sans-serif; font-size: 1.5rem; font-weight: bold; color: #fff; }
-        .nav-links ul { list-style: none; padding: 0; margin: 0; display: flex; gap: 1.5rem; }
-        .nav-links a { color: #ecf0f1; text-decoration: none; padding: 0.5rem 0; border-bottom: 2px solid transparent; transition: all 0.2s; }
-        .nav-links a:hover { color: #fff; border-bottom-color: #1abc9c; }
-        .nav-links a.active { color: #1abc9c; font-weight: bold; }
-        .top-nav-right { display: flex; align-items: center; gap: 1.5rem; }
-        .user-profile { display: flex; align-items: center; gap: 0.75rem; }
-        .user-avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 2px solid #34495e; }
-        .user-name { font-weight: bold; }
-        #signout-btn { background-color: #e74c3c; padding: 0.5rem 1rem; width: auto; margin: 0; border-radius: 4px; color: white; font-weight: bold; cursor: pointer; font-size: 1em; }
-
-        /* 內容區域 */
-        .content-area { flex-grow: 1; padding: 2rem; overflow-y: auto; margin-top: var(--header-height); }
-        
-        /* 通用元件 */
-        #loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: #f4f7f9; display: flex; justify-content: center; align-items: center; font-size: 1.2rem; color: #2c3e50; z-index: 9999; }
-        .view { display: none; }
-        .view.active { display: block; }
-        .form-container { background: white; padding: 2.5rem; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); max-width: 600px; margin: auto; }
-        h3, h4 { color: #343a40; }
-        label { display: block; margin-top: 1rem; margin-bottom: 5px; font-weight: bold; color: #495057; }
-        input[type="text"], input[type="password"], input[type="email"], textarea { width: 100%; padding: 12px; margin-bottom: 12px; border: 1px solid #ced4da; border-radius: 4px; box-sizing: border-box; font-size: 1em; }
-        button { width: 100%; padding: 12px; margin-top: 10px; border: none; border-radius: 4px; color: white; font-weight: bold; cursor: pointer; font-size: 1em; transition: opacity 0.2s; }
-        button:hover { opacity: 0.9; }
-        #save-profile-btn, #add-user-btn { background-color: #007bff; }
-        #update-password-btn { background-color: #17a2b8; }
-        #message, #admin-message { margin-top: 15px; font-weight: bold; min-height: 1.2em; text-align: center; }
-        .message.success { color: #28a745; }
-        .message.error { color: #dc3545; }
-        hr { border: 0; border-top: 1px solid #dee2e6; margin: 20px 0; }
-        .page-title { font-family: "Microsoft JhengHei", "微軟正黑體", sans-serif; font-size: 20pt; font-weight: bold; text-align: center; color: #2c3e50; margin-top: 0; margin-bottom: 1rem; }
-        .title-divider { border: 0; border-top: 1px solid #e0e0e0; margin-bottom: 2rem; }
-        .loading-spinner { border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; margin: 10px auto; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        
-        /* 首頁儀表板 */
-        .dashboard-grid { display: flex; flex-wrap: wrap; gap: 2rem; align-items: stretch; }
-        .dashboard-item { flex: 1; min-width: 300px; display: flex; flex-direction: column; }
-        .search-widget { background: #ffffff; border-radius: 8px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); flex-grow: 1; }
-        .search-widget h4 { margin-top: 0; margin-bottom: 15px; color: #343a40; text-align: center; }
-        .search-form { display: flex; gap: 10px; }
-        .search-form input[type="text"] { flex-grow: 1; margin-bottom: 0; }
-        .search-form button { margin-top: 0; width: auto; padding: 0 20px; }
-        #google-search-btn { background-color: #4285F4; }
-        #gemini-search-btn { background-color: #8E44AD; }
-        .gemini-widget { margin-top: 2rem; }
-        #gemini-results { margin-top: 1rem; padding: 15px; border: 1px solid #e0e0e0; border-radius: 8px; background-color: #f9f9f9; min-height: 150px; max-height: 250px; overflow-y: auto; white-space: pre-wrap; text-align: left; }
-        
-        /* 地圖功能相關 CSS 已移除 */
-        
-        /* 使用者管理 */
-        .user-management-container { display: flex; gap: 2rem; flex-wrap: wrap; }
-        .user-list, .add-user-form { flex: 1; min-width: 300px; background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
-        .user-list ul { list-style: none; padding: 0; }
-        .user-list li { display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 0; border-bottom: 1px solid #eee; }
-        .user-list li:last-child { border-bottom: none; }
-        .user-list .user-email { color: #333; }
-        .user-list .user-role { background-color: #eee; color: #555; padding: 3px 8px; border-radius: 12px; font-size: 0.8em; }
-        .user-list .approve-btn { background-color: #28a745; color: white; padding: 5px 10px; font-size: 0.9em; width: auto; margin: 0; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans TC", sans-serif; padding: 2em; background-color: #f0f0f0; line-height: 1.6; }
+        #status { font-size: 1.2em; padding: 1em; background-color: white; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .error { color: #dc3545; font-weight: bold; }
+        .success { color: #28a745; font-weight: bold; }
+        .info { color: #007bff; }
+        pre { background-color: #e9ecef; padding: 1em; border-radius: 4px; white-space: pre-wrap; word-break: break-all; border: 1px solid #ced4da; }
+        h1, h2 { color: #343a40; }
     </style>
 </head>
 <body>
 
-<div id="loading-overlay">載入中...</div>
-
-<div class="app-container" style="display: none;">
-    <header class="top-nav">
-        <div class="top-nav-left">
-            <h1 class="main-title">我的工作站</h1>
-            <nav class="nav-links">
-                <ul>
-                    <li><a href="#" class="nav-link active" data-view="home">個人首頁</a></li>
-                    <li><a href="#" class="nav-link" data-view="calendar">行事曆</a></li>
-                    <li><a href="#" class="nav-link" data-view="chat">聊天</a></li>
-                    <li><a href="#" class="nav-link" data-view="profile">個人管理後台</a></li>
-                    <li id="user-management-link" style="display: none;"><a href="#" class="nav-link" data-view="user-management">使用者管理</a></li>
-                </ul>
-            </nav>
-        </div>
-        <div class="top-nav-right">
-            <div class="user-profile">
-                <img id="user-avatar-preview" class="user-avatar" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="Avatar">
-                <span id="user-name-preview" class="user-name">使用者</span>
-            </div>
-            <button id="signout-btn">登出</button>
-        </div>
-    </header>
-
-    <main class="content-area">
-        <!-- 首頁 -->
-        <div id="home-view" class="view active">
-            <div class="dashboard-grid">
-                <div id="search-column" class="dashboard-item">
-                    <div class="search-widget">
-                        <h4>Google 搜尋</h4>
-                        <form action="https://www.google.com/search" method="get" target="_blank" class="search-form">
-                            <input type="text" name="q" placeholder="輸入關鍵字..." required>
-                            <button type="submit" id="google-search-btn">搜尋</button>
-                        </form>
-                    </div>
-                    <div class="search-widget gemini-widget">
-                        <h4>Gemini AI 搜尋</h4>
-                        <form id="gemini-search-form" class="search-form">
-                            <input type="text" id="gemini-prompt" placeholder="輸入您的問題..." required>
-                            <button type="submit" id="gemini-search-btn">傳送</button>
-                        </form>
-                        <div id="gemini-results">請在這裡輸入問題，向 Gemini 提問。</div>
-                    </div>
-                </div>
-            </div>
-            <!-- 地圖區塊已移除 -->
-        </div>
-        <!-- 其他視圖 -->
-        <div id="calendar-view" class="view"><h1 class="page-title">行事曆</h1><hr class="title-divider"><p>此處將放置行事曆功能。</p></div>
-        <div id="chat-view" class="view"><h1 class="page-title">聊天</h1><hr class="title-divider"><p>此處將放置聊天室功能。</p></div>
-        <div id="profile-view" class="view"><div class="form-container"><h3>個人管理後台</h3><div style="text-align:center; margin-bottom: 1.5rem;"><img id="profile-avatar-preview" style="width: 120px; height: 120px; border-radius: 50%; object-fit: cover; cursor: pointer;" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="大頭貼預覽" title="點擊更換大頭貼"><input type="file" id="avatar-uploader" accept="image/png, image/jpeg" style="display: none;"></div><label for="nickname">暱稱</label><input type="text" id="nickname" placeholder="您的暱稱"><label for="bio">個人簡介</label><textarea id="bio" rows="4" placeholder="關於您自己..."></textarea><button id="save-profile-btn">儲存個人資料</button><div id="password-section" style="display: none;"><hr><label for="new-password">變更密碼</label><input type="password" id="new-password" placeholder="輸入新密碼"><button id="update-password-btn">更新密碼</button></div><div id="message"></div></div></div>
-        <div id="user-management-view" class="view"><h1 class="page-title">使用者管理</h1><hr class="title-divider"><div class="user-management-container"><div class="add-user-form"><h4>邀請新使用者</h4><p style="font-size: 0.9em; color: #666;">請讓使用者自行從登入頁面註冊，註冊後您即可在此處看到他們的帳號並進行審核。</p></div><div class="user-list"><h4>已授權使用者列表</h4><ul id="authorized-user-list"><li>載入中...</li></ul></div></div></div>
-    </main>
+<div id="status">
+    <h1>偵錯模式</h1>
+    <p>正在初始化應用程式...</p>
+    <p>請打開瀏覽器開發者工具 (F12) 並查看 Console 分頁的輸出，以獲取詳細的執行紀錄。</p>
 </div>
 
 <script>
-    // 此函數包含整個應用程式的邏輯。
-    // 我們將等待 Supabase 函式庫完全載入後再呼叫它。
     function initializeApp() {
-        // --- 1. 初始化設定 ---
         const SUPABASE_URL = 'https://wvdfuqvebqolvpwhdelg.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind2ZGZ1cXZlYnFvbHZwd2hkZWxnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTIyMzA0MjksImV4cCI6MjA2NzgwNjQyOX0.0VAgxyaoyeFeNbto9pUchwqQVqvHzCzyC22wXb01OKU';
-
-        // 在此函數被呼叫時，'supabase' 物件保證已存在。
         const { createClient } = supabase;
         const _supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         
-        // --- 2. 取得頁面元素 ---
-        const loadingOverlay = document.getElementById('loading-overlay');
-        const appContainer = document.querySelector('.app-container');
-        const userAvatarPreview = document.getElementById('user-avatar-preview');
-        const userNamePreview = document.getElementById('user-name-preview');
-        const navLinks = document.querySelectorAll('.nav-link');
-        const views = document.querySelectorAll('.view');
-        const signOutBtn = document.getElementById('signout-btn');
-        const profileAvatar = document.getElementById('profile-avatar-preview');
-        const avatarUploader = document.getElementById('avatar-uploader');
-        const nicknameInput = document.getElementById('nickname');
-        const bioTextarea = document.getElementById('bio');
-        const saveProfileBtn = document.getElementById('save-profile-btn');
-        const messageDiv = document.getElementById('message');
-        const passwordSection = document.getElementById('password-section');
-        const newPasswordInput = document.getElementById('new-password');
-        const updatePasswordBtn = document.getElementById('update-password-btn');
-        const geminiSearchForm = document.getElementById('gemini-search-form');
-        const geminiPromptInput = document.getElementById('gemini-prompt');
-        const geminiResultsDiv = document.getElementById('gemini-results');
-        const userManagementLink = document.getElementById('user-management-link');
-        const userListUl = document.getElementById('authorized-user-list');
+        const statusDiv = document.getElementById('status');
 
-        let currentUser = null;
+        console.log('initializeApp() 執行完畢，正在等待 onAuthStateChange 事件...');
+        statusDiv.innerHTML += '<p class="info">Supabase 客戶端已初始化。正在等待認證狀態...</p>';
 
-        // --- 3. 功能函式 ---
-
-        const showMessage = (element, text, isError = false) => {
-            element.textContent = text;
-            element.className = isError ? 'message error' : 'message success';
-        };
-
-        const loadUserProfile = async (user) => {
-            currentUser = user;
-            try {
-                const { data: profile, error } = await _supabase.from('profiles').select('*').eq('id', user.id).single();
-                if (error && error.code !== 'PGRST116') throw error;
-                
-                const nickname = user.user_metadata.nickname || user.email.split('@')[0];
-                const avatarUrl = user.user_metadata.avatar_url || 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMjAiIGhlaWdodD0iMTIwIiB2aWV3Qm94PSIwIDAgMTIwIDEyMCI+CiAgPHJlY3Qgd2lkdGg9IjEyMCIgaGVpZ2h0PSIxMjAiIHN0eWxlPSJmaWxsOiNjZWMwY2U7IiAvPgogIDxwYXRoIGQ9Ik02MCA2MEM3Ni41NjkgNjAgOTAgNDYuNTY5IDkwIDMwQzkwIDEzLjQzMSA3Ni41NjkgMCA2MCAwQzQzLjQzMSAwIDMwIDEzLjQzMSA5MCAzMEMzMCA0Ni45NjkgNDMuNDMxIDYwIDYwIDYwWk02MCA3MEMzNy45MDkgNzEgMjAgODguOTA5IDIwIDExMVYxMjBIMTAwVjExMUMxMDAgODguOTA5IDgyLjA5MSA3MSA2MCA3MVoiIGZpbGw9IiNhYWFiYjAiLz4KPC9zdmc+';
-                
-                userAvatarPreview.src = avatarUrl;
-                userNamePreview.innerText = nickname;
-                profileAvatar.src = avatarUrl;
-                nicknameInput.value = user.user_metadata.nickname || '';
-                bioTextarea.value = user.user_metadata.bio || '';
-
-                if (user.app_metadata.provider !== 'google' && user.app_metadata.providers.includes('email')) {
-                    passwordSection.style.display = 'block';
-                } else {
-                    passwordSection.style.display = 'none';
-                }
-                
-                if (profile && profile.role === 'admin') {
-                    userManagementLink.style.display = 'list-item';
-                    fetchUsers();
-                } else {
-                    userManagementLink.style.display = 'none';
-                }
-            } catch (error) {
-                console.error('讀取 profile 失敗:', error);
-                userNamePreview.innerText = "資料載入失敗";
-            }
-        };
-
-        const switchView = (viewName) => { 
-            views.forEach(v => v.classList.remove('active')); 
-            navLinks.forEach(l => l.classList.remove('active')); 
-            document.getElementById(`${viewName}-view`)?.classList.add('active'); 
-            document.querySelector(`.nav-link[data-view="${viewName}"]`)?.classList.add('active'); 
-        };
-        
-        const signOut = async () => { await _supabase.auth.signOut(); };
-
-        const uploadAvatar = async (event) => {
-            const file = event.target.files[0];
-            if (!file || !currentUser) return;
-            const filePath = `${currentUser.id}/${Date.now()}-${file.name}`;
-            showMessage(messageDiv, '頭像上傳中...');
-            try {
-                const { error: uploadError } = await _supabase.storage.from('avatars').upload(filePath, file);
-                if (uploadError) throw uploadError;
-
-                const { data } = _supabase.storage.from('avatars').getPublicUrl(filePath);
-                const { error: updateUserError } = await _supabase.auth.updateUser({ data: { avatar_url: data.publicUrl } });
-                if (updateUserError) throw updateUserError;
-
-                profileAvatar.src = data.publicUrl;
-                userAvatarPreview.src = data.publicUrl;
-                showMessage(messageDiv, '頭像更新成功！');
-            } catch (error) {
-                showMessage(messageDiv, '頭像更新失敗: ' + error.message, true);
-            }
-        };
-
-        const updateProfile = async () => {
-            if (!currentUser) return;
-            const updates = { data: { nickname: nicknameInput.value, bio: bioTextarea.value } };
-            showMessage(messageDiv, '更新中...');
-            const { error } = await _supabase.auth.updateUser(updates);
-            if (error) {
-                showMessage(messageDiv, '更新失敗: ' + error.message, true);
-            } else {
-                showMessage(messageDiv, '個人資料已成功儲存！');
-                userNamePreview.innerText = nicknameInput.value;
-            }
-        };
-
-        const updatePassword = async () => {
-            const newPassword = newPasswordInput.value;
-            if (!newPassword || newPassword.length < 8) {
-                showMessage(messageDiv, '密碼長度至少需要 8 個字元。', true);
-                return;
-            }
-            showMessage(messageDiv, '密碼更新中...');
-            const { error } = await _supabase.auth.updateUser({ password: newPassword });
-            if (error) {
-                showMessage(messageDiv, '密碼更新失敗: ' + error.message, true);
-            } else {
-                newPasswordInput.value = '';
-                showMessage(messageDiv, '密碼已成功更新！');
-            }
-        };
-        
-        const handleGeminiSearch = async (event) => {
-            event.preventDefault();
-            const prompt = geminiPromptInput.value;
-            if (!prompt) return;
-            
-            geminiResultsDiv.innerHTML = '<div class="loading-spinner"></div>';
-            try {
-                const response = await fetch('/.netlify/functions/gemini-proxy', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ prompt }),
-                });
-                const resData = await response.json();
-                if (!response.ok) throw new Error(resData.message || '伺服器回應錯誤');
-                geminiResultsDiv.textContent = resData.text;
-            } catch (error) {
-                geminiResultsDiv.textContent = `搜尋失敗: ${error.message}`;
-            }
-        };
-
-        const fetchUsers = async () => {
-            userListUl.innerHTML = '<li>載入中...</li>';
-            try {
-                const { data: users, error } = await _supabase.from('profiles').select('*');
-                if (error) throw error;
-                
-                let usersHtml = users.map(user => `
-                    <li>
-                        <div>
-                            <span class="user-email">${user.email}</span>
-                            <span class="user-role">${user.role}</span>
-                        </div>
-                        ${user.status === 'pending' 
-                            ? `<button class="approve-btn" data-id="${user.id}">核准</button>` 
-                            : `<span style="color: green;">已核准</span>`
-                        }
-                    </li>`).join('');
-                userListUl.innerHTML = usersHtml || '<li>沒有待審核或已存在的使用者。</li>';
-            } catch(error) {
-                userListUl.innerHTML = `<li><span style="color:red">讀取使用者列表失敗: ${error.message}</span></li>`;
-            }
-        };
-
-        const approveUser = async (userId) => {
-            if (window.confirm(`您確定要核准這位使用者嗎？`)) {
-                 try {
-                    const { error } = await _supabase.from('profiles').update({ status: 'approved' }).eq('id', userId);
-                    if (error) throw error;
-                    alert('使用者已成功核准！');
-                    fetchUsers();
-                } catch(error) {
-                    alert('核准失敗: ' + error.message);
-                }
-            }
-        };
-
-        // --- 4. 事件綁定 ---
-        signOutBtn.addEventListener('click', signOut);
-        navLinks.forEach(link => { link.addEventListener('click', (e) => { e.preventDefault(); switchView(link.getAttribute('data-view')); }); });
-        profileAvatar.addEventListener('click', () => avatarUploader.click());
-        avatarUploader.addEventListener('change', uploadAvatar);
-        saveProfileBtn.addEventListener('click', updateProfile);
-        updatePasswordBtn.addEventListener('click', updatePassword);
-        geminiSearchForm.addEventListener('submit', handleGeminiSearch);
-        userListUl.addEventListener('click', (event) => {
-            if (event.target.classList.contains('approve-btn')) {
-                approveUser(event.target.dataset.id);
-            }
-        });
-
-        // --- 5. 核心認證邏輯 (最終版) ---
         _supabase.auth.onAuthStateChange(async (event, session) => {
-            if (event === 'SIGNED_OUT' || !session) {
-                window.location.href = `${window.location.origin}/index.html`;
+            console.log('onAuthStateChange 事件觸發！', { event, session });
+            statusDiv.innerHTML = `<h2>onAuthStateChange 事件觸發</h2><p>事件類型: <strong>${event}</strong></p>`;
+
+            if (!session) {
+                console.log('沒有 session，準備導向登入頁...');
+                statusDiv.innerHTML += '<p class="error">沒有偵測到登入狀態，將在 3 秒後導向登入頁。</p>';
+                setTimeout(() => {
+                    window.location.href = `${window.location.origin}/index.html`;
+                }, 3000);
                 return;
             }
 
-            if (event === 'USER_UPDATED') {
-                await loadUserProfile(session.user);
-                return;
-            }
+            statusDiv.innerHTML += `<p>使用者 Session 已偵測到，使用者 ID: <strong>${session.user.id}</strong></p>`;
+            statusDiv.innerHTML += '<p class="info">正在查詢使用者 profile...</p>';
+            console.log(`正在查詢 user ID 為 ${session.user.id} 的 profile...`);
 
-            if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN') {
-                try {
-                    const { data: profile, error: profileError } = await _supabase.from('profiles').select('id, role, status').eq('id', session.user.id).single();
+            try {
+                const { data: profile, error: profileError } = await _supabase
+                    .from('profiles')
+                    .select('*') // 取得所有欄位以供偵錯
+                    .eq('id', session.user.id)
+                    .single();
 
-                    if (profileError && profileError.code !== 'PGRST116') {
-                        throw profileError;
-                    }
+                console.log('Profile 查詢結果:', { profile, profileError });
+                statusDiv.innerHTML += `<h2>Profile 查詢完畢</h2><pre>查詢結果:\n${JSON.stringify({ profile, profileError }, null, 2)}</pre>`;
 
-                    if (profile && profile.status === 'approved') {
-                        await loadUserProfile(session.user);
-                        
-                        // 所有非同步功能都已移除
-                        
-                        loadingOverlay.style.display = 'none';
-                        appContainer.style.display = 'flex';
-                        switchView('home');
-
-                    } else if (profile && profile.status === 'pending') {
-                        document.body.innerHTML = `<div style="text-align: center; padding: 50px; font-family: sans-serif; color: #333;"><h2>感謝您的註冊！</h2><p>您的帳號 (<strong>${session.user.email}</strong>) 正在等待管理員審核啟用。</p><button onclick="supabase.createClient('${SUPABASE_URL}', '${SUPABASE_ANON_KEY}').auth.signOut().then(() => window.location.href='/index.html')" style="padding: 10px 20px; background-color: #e74c3c; color: white; border: none; border-radius: 4px; cursor: pointer; margin-top: 20px;">登出</button></div>`;
-                    
-                    } else {
-                        console.log('新使用者，正在自動建立 profile...');
-                        const { error: insertError } = await _supabase.from('profiles').insert({ id: session.user.id, email: session.user.email, role: 'member', status: 'pending' });
-                        if (insertError) throw insertError;
-                        document.body.innerHTML = `<div style="text-align: center; padding: 50px; font-family: sans-serif; color: #333;"><h2>感謝您的註冊！</h2><p>您的帳號 (<strong>${session.user.email}</strong>) 正在等待管理員審核啟用。</p><button onclick="supabase.createClient('${SUPABASE_URL}', '${SUPABASE_ANON_KEY}').auth.signOut().then(() => window.location.href='/index.html')" style="padding: 10px 20px; background-color: #e74c3c; color: white; border: none; border-radius: 4px; cursor: pointer; margin-top: 20px;">登出</button></div>`;
-                    }
-                } catch (error) {
-                    console.error('驗證使用者 Profile 時發生嚴重錯誤:', error);
-                    document.body.innerHTML = `<div style="text-align: center; padding: 50px; font-family: sans-serif; color: #dc3545;"><h2>應用程式載入失敗</h2><p>錯誤詳情: ${error.message}</p><p style="color: #666; max-width: 600px; margin: auto;"><b>請檢查 Supabase 的 'profiles' 資料表權限，或瀏覽器開發者工具的 Console 以獲取更多資訊。</b></p><button onclick="supabase.createClient('${SUPABASE_URL}', '${SUPABASE_ANON_KEY}').auth.signOut().then(() => window.location.href='/index.html')" style="padding: 10px 20px; background-color: #e74c3c; color: white; border: none; border-radius: 4px; cursor: pointer; margin-top: 20px;">登出</button></div>`;
+                if (profileError && profileError.code !== 'PGRST116') {
+                    // 如果發生了 'PGRST116' (找不到) 以外的錯誤，就拋出
+                    throw profileError;
                 }
+
+                if (profile && profile.status === 'approved') {
+                    console.log('使用者已核准，登入成功！');
+                    document.body.innerHTML = `<h1 class="success">登入成功！</h1><p>使用者 <strong>${profile.email || session.user.email}</strong> 已被核准。</p><p>核心認證流程正常。現在可以逐步將原有的功能加回來了。</p>`;
+                } else if (profile && profile.status === 'pending') {
+                    console.log('使用者待審核中。');
+                    document.body.innerHTML = `<h1 class="info">帳號待審核</h1><p>您的帳號 (<strong>${session.user.email}</strong>) 正在等待管理員審核啟用。</p>`;
+                } else {
+                    // 理論上這個情況不應該發生，因為我們的邏輯會在使用者註冊時建立 profile
+                    console.error('Profile 不存在或狀態不明確！', { profile });
+                    document.body.innerHTML = `<h1 class="error">發生未預期的錯誤</h1><p>在資料庫中找不到您的 Profile 紀錄，或 Profile 狀態不正確。請聯繫管理員。</p><pre>${JSON.stringify(profile, null, 2)}</pre>`;
+                }
+
+            } catch (error) {
+                console.error('核心邏輯區塊發生嚴重錯誤:', error);
+                document.body.innerHTML = `<h1 class="error">應用程式載入失敗</h1><h2>錯誤詳情:</h2><pre>${error.message}</pre>`;
             }
         });
     }
 
-    // 【已修正】使用輪詢機制確保 Supabase 函式庫已載入
     const supabaseLoader = setInterval(() => {
-        // 檢查全局範圍內是否存在 'supabase' 物件且其 'createClient' 方法也存在
         if (typeof supabase !== 'undefined' && typeof supabase.createClient === 'function') {
-            clearInterval(supabaseLoader); // 停止輪詢
-            initializeApp(); // 執行主應用程式
+            clearInterval(supabaseLoader);
+            console.log('Supabase JS 已載入，準備執行 initializeApp()');
+            initializeApp();
+        } else {
+            console.log('正在等待 Supabase JS 載入...');
         }
-    }, 100); // 每 100 毫秒檢查一次
+    }, 100);
 </script>
 
 </body>
